@@ -1,39 +1,35 @@
-"use client"
-import { useState } from 'react';
+// app/auth/login/page.tsx
+'use client';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '../../context/AuthContext';
 
-const LoginPage = () => {
+export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const { signIn, user } = useAuth();
 
-  const handleSubmit = async (e) => {
+  // Redirect if user is already logged in
+  useEffect(() => {
+    if (user) {
+      router.push('/dashboard');
+    }
+  }, [user, router]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
 
     try {
-      const response = await fetch('/api/auth', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to login');
-      }
-
-      // Store token in cookie
-      document.cookie = `token=${data.token}; path=/`;
-      router.push('/'); // Redirect to dashboard
-    } catch (err) {
-      setError(err.message);
+      await signIn(email, password);
+      router.push('/dashboard');
+    } catch (error: any) {
+      console.error('Login error:', error);
+      setError(error.message || 'Failed to sign in');
     } finally {
       setIsLoading(false);
     }
@@ -42,14 +38,16 @@ const LoginPage = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-lg shadow">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-bold text-gray-900">
-            Sign in to your account
-          </h2>
-        </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+        <h2 className="text-center text-3xl font-bold text-gray-900">
+          Sign in to your account
+        </h2>
+        <form className="space-y-6" onSubmit={handleSubmit}>
           {error && (
-            <div className="bg-red-50 text-red-500 p-3 rounded">
+            <div
+              id="error-message"
+              className="bg-red-50 text-red-500 p-3 rounded"
+              role="alert"
+            >
               {error}
             </div>
           )}
@@ -63,7 +61,8 @@ const LoginPage = () => {
                 name="email"
                 type="email"
                 required
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                disabled={isLoading}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-black"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
@@ -77,13 +76,13 @@ const LoginPage = () => {
                 name="password"
                 type="password"
                 required
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                disabled={isLoading}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-black"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
             </div>
           </div>
-
           <button
             type="submit"
             disabled={isLoading}
@@ -95,6 +94,4 @@ const LoginPage = () => {
       </div>
     </div>
   );
-};
-
-export default LoginPage;
+}

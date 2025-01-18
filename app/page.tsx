@@ -1,4 +1,3 @@
-// app/page.tsx
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
@@ -10,5 +9,7 @@ export default async function Home() {
     redirect('/login');
   }
 
-  redirect('/dashboard');
+  // Optional: Verify token validity with Firebase Admin SDK if needed
+  // If invalid, redirect to login
+  return redirect('/dashboard');
 }
