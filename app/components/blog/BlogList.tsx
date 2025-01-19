@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from 'react'
-import { BlogList } from '@/app/components/bloglist'
+import { BlogList } from '../../app/components/bloglist'
 
 export default function BlogPage() {
   const [posts, setPosts] = useState([])

@@ -1,6 +1,7 @@
 // lib/firebase.ts
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAB-WbFZTQ8bfHA3W44Q9ithgDGWos1jss",
@@ -14,6 +15,7 @@ const firebaseConfig = {
 // Initialize Firebase
 let app;
 let auth;
+let db;
 
 try {
   if (!getApps().length) {
@@ -25,10 +27,11 @@ try {
   }
   
   auth = getAuth(app);
-  console.log('Firebase Auth initialized successfully');
+  db = getFirestore(app);
+  console.log('Firebase Auth and Firestore initialized successfully');
 } catch (error) {
   console.error('Firebase initialization error:', error);
   throw error;
 }
 
-export { auth};
+export { auth, db };

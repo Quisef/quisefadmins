@@ -1,6 +1,7 @@
 "use client"
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Loader2, Upload, X, Image as ImageIcon } from 'lucide-react';
+import { db } from '../../lib/firebase';
 
 const MAX_IMAGE_SIZE = 2 * 1024 * 1024; // 2MB
 const INITIAL_BLOG_STATE = {
