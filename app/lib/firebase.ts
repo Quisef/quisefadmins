@@ -31,4 +31,4 @@ try {
   throw error;
 }
 
-export { auth };
+export { auth};

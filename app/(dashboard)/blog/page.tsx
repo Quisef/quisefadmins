@@ -105,7 +105,7 @@ const BlogPage = () => {
   const [newBlog, setNewBlog] = useState(INITIAL_BLOG_STATE);
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);  // Changed to true initially
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const filteredBlogs = useMemo(
@@ -144,6 +144,73 @@ const BlogPage = () => {
     }));
   }, []);
 
+  // Fetch blogs on component mount
+  useEffect(() => {
+    const fetchBlogs = async () => {
+      try {
+        const response = await fetch('/api/blogs');
+        if (!response.ok) throw new Error('Failed to fetch blogs');
+        const data = await response.json();
+        setBlogs(data);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchBlogs();
+  }, []);
+
+  // Create new blog
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const formData = new FormData();
+      Object.keys(newBlog).forEach(key => {
+        if (key === 'imageUrl' && newBlog[key]) {
+          formData.append('image', newBlog[key]);
+        } else if (key !== 'imagePreview') {
+          formData.append(key, newBlog[key]);
+        }
+      });
+
+      const response = await fetch('/api/blogs', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) throw new Error('Failed to create blog');
+      
+      const createdBlog = await response.json();
+      setBlogs(prev => [...prev, createdBlog]);
+      setIsCreating(false);
+      setNewBlog(INITIAL_BLOG_STATE);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+
+  // Delete blog
+  const deleteBlog = async (blogId) => {
+    try {
+      const response = await fetch(`/api/blogs/${blogId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) throw new Error('Failed to delete blog');
+      setBlogs(prev => prev.filter(blog => blog._id !== blogId));
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -180,140 +247,136 @@ const BlogPage = () => {
 
       {isCreating && (
         <div className="fixed inset-0 bg-black/50 flex justify-center items-center p-4">
-        <div className="bg-white w-full max-w-3xl rounded-lg shadow-xl">
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-bold">Create Blog</h2>
-              <button
-                onClick={() => setIsCreating(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-          </div>
-          
-          <div className="p-6 max-h-[calc(100vh-200px)] overflow-y-auto">
-            <form onSubmit={newBlog} className="space-y-6">
-              <div className="grid grid-cols-2 gap-6">
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Title
-                  </label>
-                  <input
-                    name="title"
-                    placeholder="Enter blog title"
-                    value={newBlog.title}
-                    onChange={(e) => setNewBlog(prev => ({...prev, title: e.target.value}))}
-                    required
-                    className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Content
-                  </label>
-                  <textarea
-                    name="content"
-                    placeholder="Write your blog content"
-                    value={newBlog.content}
-                    onChange={(e) => setNewBlog(prev => ({...prev, content: e.target.value}))}
-                    required
-                    className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-h-[200px]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Author
-                  </label>
-                  <input
-                    name="author"
-                    placeholder="Enter author name"
-                    value={newBlog.author}
-                    onChange={(e) => setNewBlog(prev => ({...prev, author: e.target.value}))}
-                    required
-                    className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Date
-                  </label>
-                  <input
-                    type="date"
-                    name="date"
-                    value={newBlog.date}
-                    onChange={(e) => setNewBlog(prev => ({...prev, date: e.target.value}))}
-                    required
-                    className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Categories
-                  </label>
-                  <input
-                    name="categories"
-                    placeholder="Enter categories (comma-separated)"
-                    value={newBlog.categories}
-                    onChange={(e) => setNewBlog(prev => ({...prev, categories: e.target.value}))}
-                    required
-                    className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-
-                <div className="col-span-2">
-                  <ImagePicker
-                    onImageSelect={handleImageSelect}
-                    currentImage={newBlog.imagePreview}
-                    onRemoveImage={handleRemoveImage}
-                  />
-                </div>
+          <div className="bg-white w-full max-w-3xl rounded-lg shadow-xl">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex justify-between items-center">
+                <h2 className="text-xl font-bold">Create Blog</h2>
+                <button
+                  onClick={() => setIsCreating(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X className="w-6 h-6" />
+                </button>
               </div>
-            </form>
-          </div>
-
-          <div className="p-6 border-t border-gray-200 bg-gray-50">
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setIsCreating(false)}
-                className="px-4 py-2 border rounded hover:bg-gray-100"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={newBlog}
-                disabled={isSubmitting}
-                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isSubmitting ? (
-                  <div className="flex items-center">
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Saving...
+            </div>
+            
+            <div className="p-6 max-h-[calc(100vh-200px)] overflow-y-auto">
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Title
+                    </label>
+                    <input
+                      name="title"
+                      placeholder="Enter blog title"
+                      value={newBlog.title}
+                      onChange={(e) => setNewBlog(prev => ({...prev, title: e.target.value}))}
+                      required
+                      className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
                   </div>
-                ) : (
-                  'Save Blog'
-                )}
-              </button>
+
+                  <div className="col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Content
+                    </label>
+                    <textarea
+                      name="content"
+                      placeholder="Write your blog content"
+                      value={newBlog.content}
+                      onChange={(e) => setNewBlog(prev => ({...prev, content: e.target.value}))}
+                      required
+                      className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-h-[200px]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Author
+                    </label>
+                    <input
+                      name="author"
+                      placeholder="Enter author name"
+                      value={newBlog.author}
+                      onChange={(e) => setNewBlog(prev => ({...prev, author: e.target.value}))}
+                      required
+                      className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Date
+                    </label>
+                    <input
+                      type="date"
+                      name="date"
+                      value={newBlog.date}
+                      onChange={(e) => setNewBlog(prev => ({...prev, date: e.target.value}))}
+                      required
+                      className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div className="col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Categories
+                    </label>
+                    <input
+                      name="categories"
+                      placeholder="Enter categories (comma-separated)"
+                      value={newBlog.categories}
+                      onChange={(e) => setNewBlog(prev => ({...prev, categories: e.target.value}))}
+                      required
+                      className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div className="col-span-2">
+                    <ImagePicker
+                      onImageSelect={handleImageSelect}
+                      currentImage={newBlog.imagePreview}
+                      onRemoveImage={handleRemoveImage}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setIsCreating(false)}
+                    className="px-4 py-2 border rounded hover:bg-gray-100"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSubmitting ? (
+                      <div className="flex items-center">
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Saving...
+                      </div>
+                    ) : (
+                      'Save Blog'
+                    )}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         </div>
-      </div>
-    )}
-
-    
+      )}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {filteredBlogs.map((blog) => (
           <div key={blog._id} className="border rounded-lg p-4 space-y-4">
             {blog.imageUrl && (
               <img
-                src={URL.createObjectURL(blog.imageUrl)}
+                src={blog.imagePreview || URL.createObjectURL(blog.imageUrl)}
                 alt={blog.title}
                 className="w-full h-48 object-cover rounded"
               />
