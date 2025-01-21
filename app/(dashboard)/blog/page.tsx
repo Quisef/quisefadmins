@@ -1,66 +1,79 @@
-"use client"
-import { useEffect, useState, useCallback, useMemo } from 'react';
-import { Loader2, Upload, X, Image as ImageIcon } from 'lucide-react';
-import { db } from '../../lib/firebase';
+"use client";
 
-const MAX_IMAGE_SIZE = 2 * 1024 * 1024; // 2MB
+import { useEffect, useState, useCallback, useMemo } from "react";
+import { Loader2, Upload, X } from "lucide-react";
+import { db } from "../../lib/firebase";
+import { collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, Timestamp } from "firebase/firestore";
+import Image from "next/image";
+import axios from "axios";
+
+interface Blog {
+  id: string;
+  title: string;
+  content: string;
+  author: string;
+  categories: string;
+  date: string;
+  imageUrl: string | null;
+  createdAt: Timestamp;
+}
+
 const INITIAL_BLOG_STATE = {
-  title: '',
-  content: '',
-  author: '',
-  categories: '',
-  date: new Date().toISOString().split('T')[0],
+  title: "",
+  content: "",
+  author: "",
+  categories: "",
+  date: new Date().toISOString().split("T")[0],
   imageUrl: null,
   imagePreview: null,
 };
 
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
+
+// Cloudinary Upload Function
+const uploadImageToCloudinary = async (file: File): Promise<string> => {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || "");
+  formData.append("cloud_name", process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "");
+
+  const response = await axios.post(
+    `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`,
+    formData
+  );
+  return response.data.secure_url;
+};
+
 const ImagePicker = ({ onImageSelect, currentImage, onRemoveImage }) => {
   const [isDragging, setIsDragging] = useState(false);
+
+  const handleFile = (file) => {
+    if (file.size > MAX_IMAGE_SIZE) {
+      alert("File size exceeds 5MB limit.");
+      return;
+    }
+    onImageSelect(file);
+  };
 
   const handleDrag = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
   }, []);
 
-  const handleDragIn = useCallback((e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-  }, []);
-
-  const handleDragOut = useCallback((e) => {
+  const handleDrop = (e) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
-  }, []);
-
-  const handleDrop = useCallback(
-    (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      setIsDragging(false);
-
-      const files = e.dataTransfer.files;
-      if (files && files.length > 0) {
-        const file = files[0];
-        if (file.type.startsWith('image/')) {
-          onImageSelect(file);
-        }
-      }
-    },
-    [onImageSelect]
-  );
+    const files = e.dataTransfer.files;
+    if (files?.[0]) handleFile(files[0]);
+  };
 
   return (
     <div className="space-y-2">
-      <label className="block text-sm font-medium text-gray-700">Blog Image (max 2MB)</label>
+      <label className="block text-sm font-medium text-gray-700">Blog Image (max 5MB)</label>
       {currentImage ? (
         <div className="relative w-full h-48 rounded-lg overflow-hidden border-2 border-gray-200">
-          <img
-            src={currentImage}
-            alt="Preview"
-            className="w-full h-full object-cover"
-          />
+          <img src={currentImage} alt="Preview" className="w-full h-full object-cover" />
           <button
             onClick={onRemoveImage}
             className="absolute top-2 right-2 p-1 bg-red-500 rounded-full text-white hover:bg-red-600"
@@ -71,27 +84,25 @@ const ImagePicker = ({ onImageSelect, currentImage, onRemoveImage }) => {
         </div>
       ) : (
         <div
-          onDragEnter={handleDragIn}
-          onDragLeave={handleDragOut}
+          onDragEnter={() => setIsDragging(true)}
+          onDragLeave={() => setIsDragging(false)}
           onDragOver={handleDrag}
           onDrop={handleDrop}
-          className={`relative border-2 border-dashed rounded-lg p-8 text-center cursor-pointer
-            ${isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-blue-400'}`}
+          className={`relative border-2 border-dashed rounded-lg p-8 text-center cursor-pointer ${
+            isDragging ? "border-blue-500 bg-blue-50" : "border-gray-300 hover:border-blue-400"
+          }`}
         >
           <input
             type="file"
             accept="image/*"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) onImageSelect(file);
-            }}
+            onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
           />
           <div className="space-y-2">
             <Upload className="w-10 h-10 mx-auto text-gray-400" />
             <div className="text-gray-600">
               <p className="font-medium">Click to upload or drag and drop</p>
-              <p className="text-sm">SVG, PNG, JPG or GIF (max. 2MB)</p>
+              <p className="text-sm">SVG, PNG, JPG, or GIF (max. 5MB)</p>
             </div>
           </div>
         </div>
@@ -101,127 +112,81 @@ const ImagePicker = ({ onImageSelect, currentImage, onRemoveImage }) => {
 };
 
 const BlogPage = () => {
-  const [blogs, setBlogs] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [blogs, setBlogs] = useState<Blog[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
   const [newBlog, setNewBlog] = useState(INITIAL_BLOG_STATE);
   const [isCreating, setIsCreating] = useState(false);
-  const [error, setError] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);  // Changed to true initially
+  const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const filteredBlogs = useMemo(
-    () =>
-      blogs.filter((blog) =>
-        [blog.title, blog.author].some((field) =>
-          field.toLowerCase().includes(searchTerm.toLowerCase())
-        )
-      ),
-    [blogs, searchTerm]
-  );
-
-  const handleImageSelect = useCallback((file) => {
-    if (file.size > MAX_IMAGE_SIZE) {
-      setError('Image size exceeds 2MB. Please choose a smaller file.');
-      return;
+  const fetchBlogs = useCallback(async () => {
+    try {
+      const querySnapshot = await getDocs(query(collection(db, "blogs"), orderBy("createdAt", "desc")));
+      setBlogs(querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as Blog[]);
+    } catch {
+      setError("Failed to fetch blogs");
     }
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setNewBlog((prev) => ({
-        ...prev,
-        imageUrl: file,
-        imagePreview: reader.result,
-      }));
-      setError(null);
-    };
-    reader.readAsDataURL(file);
   }, []);
 
-  const handleRemoveImage = useCallback(() => {
+  useEffect(() => {
+    fetchBlogs();
+  }, [fetchBlogs]);
+
+  const handleImageSelect = (file) => {
     setNewBlog((prev) => ({
       ...prev,
-      imageUrl: null,
-      imagePreview: null,
+      imageUrl: file,
+      imagePreview: URL.createObjectURL(file),
     }));
-  }, []);
+  };
 
-  // Fetch blogs on component mount
-  useEffect(() => {
-    const fetchBlogs = async () => {
-      try {
-        const response = await fetch('/api/blogs');
-        if (!response.ok) throw new Error('Failed to fetch blogs');
-        const data = await response.json();
-        setBlogs(data);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const handleRemoveImage = () => {
+    setNewBlog((prev) => ({ ...prev, imageUrl: null, imagePreview: null }));
+  };
 
-    fetchBlogs();
-  }, []);
-
-  // Create new blog
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     setError(null);
 
     try {
-      const formData = new FormData();
-      Object.keys(newBlog).forEach(key => {
-        if (key === 'imageUrl' && newBlog[key]) {
-          formData.append('image', newBlog[key]);
-        } else if (key !== 'imagePreview') {
-          formData.append(key, newBlog[key]);
-        }
-      });
+      let uploadedImageUrl = null;
+      if (newBlog.imageUrl) {
+        uploadedImageUrl = await uploadImageToCloudinary(newBlog.imageUrl);
+      }
 
-      const response = await fetch('/api/blogs', {
-        method: 'POST',
-        body: formData,
-      });
+      const blogData = {
+        ...newBlog,
+        imageUrl: uploadedImageUrl,
+        createdAt: Timestamp.now(),
+      };
 
-      if (!response.ok) throw new Error('Failed to create blog');
-      
-      const createdBlog = await response.json();
-      setBlogs(prev => [...prev, createdBlog]);
-      setIsCreating(false);
+      const docRef = await addDoc(collection(db, "blogs"), blogData);
+      setBlogs((prev) => [{ id: docRef.id, ...blogData }, ...prev]);
       setNewBlog(INITIAL_BLOG_STATE);
-    } catch (err) {
-      setError(err.message);
+      setIsCreating(false);
+    } catch {
+      setError("Failed to create blog");
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const filteredBlogs = useMemo(
+    () =>
+      blogs.filter((blog) =>
+        [blog.title, blog.author]
+          .join(" ")
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase())
+      ),
+    [blogs, searchTerm]
+  );
 
-  // Delete blog
-  const deleteBlog = async (blogId) => {
-    try {
-      const response = await fetch(`/api/blogs/${blogId}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) throw new Error('Failed to delete blog');
-      setBlogs(prev => prev.filter(blog => blog._id !== blogId));
-    } catch (err) {
-      setError(err.message);
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
-
+  // ... rest of your component JSX remains similar, just update the blog card to use new structure ...
   return (
     <div className="container mx-auto p-4">
+      {/* ... existing JSX ... */}
       <h1 className="text-2xl font-bold mb-4">Manage Blogs</h1>
 
       <div className="flex justify-between items-center gap-4 mb-6">
@@ -371,16 +336,20 @@ const BlogPage = () => {
           </div>
         </div>
       )}
-
+      
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {filteredBlogs.map((blog) => (
-          <div key={blog._id} className="border rounded-lg p-4 space-y-4">
+          <div key={blog.id} className="border rounded-lg p-4 space-y-4">
             {blog.imageUrl && (
-              <img
-                src={blog.imagePreview || URL.createObjectURL(blog.imageUrl)}
-                alt={blog.title}
-                className="w-full h-48 object-cover rounded"
-              />
+              <div className="relative w-full h-48">
+                <Image
+                  src={blog.imageUrl}
+                  alt={blog.title}
+                  width={500}
+                  height={300}
+                  className="object-cover rounded"
+                />
+              </div>
             )}
             <h3 className="text-xl font-semibold">{blog.title}</h3>
             <div className="space-y-1 text-sm text-gray-500">
@@ -390,7 +359,7 @@ const BlogPage = () => {
             </div>
             <p className="line-clamp-3">{blog.content}</p>
             <button
-              onClick={() => deleteBlog(blog._id)}
+              onClick={() => deleteBlog(blog.id, blog.imageUrl)}
               className="w-full bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
             >
               Delete
@@ -399,6 +368,7 @@ const BlogPage = () => {
         ))}
       </div>
 
+      {/* ... rest of your component JSX ... */}
       {filteredBlogs.length === 0 && (
         <p className="text-center text-gray-500">
           No blogs found. {blogs.length === 0 ? 'Try creating one!' : 'Try adjusting your search.'}

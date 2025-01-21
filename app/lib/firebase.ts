@@ -3,6 +3,8 @@ import { initializeApp, getApps } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
+
+
 const firebaseConfig = {
   apiKey: "AIzaSyAB-WbFZTQ8bfHA3W44Q9ithgDGWos1jss",
   authDomain: "quietshelter-b5f54.firebaseapp.com",
@@ -16,6 +18,7 @@ const firebaseConfig = {
 let app;
 let auth;
 let db;
+
 
 try {
   if (!getApps().length) {
