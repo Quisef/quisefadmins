@@ -7,6 +7,16 @@ import { collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, Timestamp 
 import Image from "next/image";
 import axios from "axios";
 
+interface BlogFormState {
+  title: string;
+  content: string;
+  author: string;
+  categories: string;
+  date: string;
+  imageUrl: File | null;
+  imagePreview: string | null;
+}
+
 interface Blog {
   id: string;
   title: string;
@@ -18,7 +28,8 @@ interface Blog {
   createdAt: Timestamp;
 }
 
-const INITIAL_BLOG_STATE = {
+// Update your initial state to match the interface
+const INITIAL_BLOG_STATE: BlogFormState = {
   title: "",
   content: "",
   author: "",
@@ -32,16 +43,35 @@ const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 
 // Cloudinary Upload Function
 const uploadImageToCloudinary = async (file: File): Promise<string> => {
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("upload_preset", process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || "");
-  formData.append("cloud_name", process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "");
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!);
+    
+    // Add timestamp for security
+    formData.append("timestamp", `${Date.now()}`);
 
-  const response = await axios.post(
-    `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`,
-    formData
-  );
-  return response.data.secure_url;
+    const response = await axios.post(
+      `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+        // Add timeout to prevent hanging requests
+        timeout: 30000
+      }
+    );
+
+    if (response.status !== 200) {
+      throw new Error(`Cloudinary error: ${response.data.error.message}`);
+    }
+
+    return response.data.secure_url;
+  } catch (error) {
+    console.error("Cloudinary upload error details:", error.response?.data);
+    throw new Error("Image upload failed. Please check your Cloudinary configuration.");
+  }
 };
 
 const ImagePicker = ({ onImageSelect, currentImage, onRemoveImage }) => {
@@ -132,11 +162,18 @@ const BlogPage = () => {
     fetchBlogs();
   }, [fetchBlogs]);
 
-  const handleImageSelect = (file) => {
-    setNewBlog((prev) => ({
+  // Updated handleImageSelect function
+  const handleImageSelect = (file: File) => {
+    if (file.size > MAX_IMAGE_SIZE) {
+      setError("File size exceeds 5MB limit.");
+      return;
+    }
+    
+    setError(null); // Clear any existing errors
+    setNewBlog(prev => ({
       ...prev,
       imageUrl: file,
-      imagePreview: URL.createObjectURL(file),
+      imagePreview: URL.createObjectURL(file)
     }));
   };
 
@@ -144,29 +181,54 @@ const BlogPage = () => {
     setNewBlog((prev) => ({ ...prev, imageUrl: null, imagePreview: null }));
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setError(null);
 
     try {
+      // Validate required fields
+      if (!newBlog.title || !newBlog.content || !newBlog.author || !newBlog.categories) {
+        throw new Error("Please fill in all required fields");
+      }
+      // Handle image upload if exists
       let uploadedImageUrl = null;
-      if (newBlog.imageUrl) {
-        uploadedImageUrl = await uploadImageToCloudinary(newBlog.imageUrl);
+      if (newBlog.imageUrl instanceof File) {
+        try {
+          uploadedImageUrl = await uploadImageToCloudinary(newBlog.imageUrl);
+        } catch (error) {
+          console.error("Image upload failed:", error);
+          throw new Error("Failed to upload image");
+        }
       }
 
+       // Prepare blog data for Firebase
       const blogData = {
-        ...newBlog,
+        title: newBlog.title,
+        content: newBlog.content,
+        author: newBlog.author,
+        categories: newBlog.categories,
+        date: newBlog.date,
         imageUrl: uploadedImageUrl,
-        createdAt: Timestamp.now(),
+        createdAt: Timestamp.now()
       };
 
+      // Add to Firebase
       const docRef = await addDoc(collection(db, "blogs"), blogData);
-      setBlogs((prev) => [{ id: docRef.id, ...blogData }, ...prev]);
+      
+      // Update local state with the new blog
+      const newBlogWithId: Blog = {
+        id: docRef.id,
+        ...blogData
+      };
+      
+      setBlogs(prev => [newBlogWithId, ...prev]);
       setNewBlog(INITIAL_BLOG_STATE);
       setIsCreating(false);
-    } catch {
-      setError("Failed to create blog");
+      
+    } catch (error) {
+      console.error("Error creating blog:", error);
+      setError(error instanceof Error ? error.message : "Failed to create blog");
     } finally {
       setIsSubmitting(false);
     }
@@ -182,6 +244,23 @@ const BlogPage = () => {
       ),
     [blogs, searchTerm]
   );
+  // Add deleteBlog function
+  const deleteBlog = async (id: string, imageUrl: string | null) => {
+    if (!window.confirm("Are you sure you want to delete this blog?")) return;
+    
+    try {
+      await deleteDoc(doc(db, "blogs", id));
+      setBlogs(prev => prev.filter(blog => blog.id !== id));
+      
+      // Optional: Add Cloudinary image deletion here if needed
+      // if (imageUrl) {
+      //   await axios.delete('/api/delete-image', { data: { url: imageUrl } });
+      // }
+    } catch (error) {
+      console.error("Error deleting blog:", error);
+      setError("Failed to delete blog");
+    }
+  };
 
   // ... rest of your component JSX remains similar, just update the blog card to use new structure ...
   return (
@@ -337,33 +416,43 @@ const BlogPage = () => {
         </div>
       )}
       
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {filteredBlogs.map((blog) => (
-          <div key={blog.id} className="border rounded-lg p-4 space-y-4">
+          <div key={blog.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
             {blog.imageUrl && (
-              <div className="relative w-full h-48">
+              <div className="relative h-48 w-full">
                 <Image
                   src={blog.imageUrl}
                   alt={blog.title}
-                  width={500}
-                  height={300}
-                  className="object-cover rounded"
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                 />
               </div>
             )}
-            <h3 className="text-xl font-semibold">{blog.title}</h3>
-            <div className="space-y-1 text-sm text-gray-500">
-              <p>Author: {blog.author}</p>
-              <p>Categories: {blog.categories}</p>
-              <p>Date: {new Date(blog.date).toLocaleDateString()}</p>
+            <div className="p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-500">
+                  {new Date(blog.date).toLocaleDateString()}
+                </span>
+                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                  {blog.categories}
+                </span>
+              </div>
+              <h3 className="text-xl font-bold truncate">{blog.title}</h3>
+              <p className="text-gray-600 line-clamp-3">{blog.content}</p>
+              <div className="flex items-center justify-between mt-4">
+                <span className="text-sm font-medium text-gray-700">
+                  By {blog.author}
+                </span>
+                <button
+                  onClick={() => deleteBlog(blog.id, blog.imageUrl)}
+                  className="px-3 py-1.5 text-sm bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors"
+                >
+                  Delete
+                </button>
+              </div>
             </div>
-            <p className="line-clamp-3">{blog.content}</p>
-            <button
-              onClick={() => deleteBlog(blog.id, blog.imageUrl)}
-              className="w-full bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
-            >
-              Delete
-            </button>
           </div>
         ))}
       </div>
