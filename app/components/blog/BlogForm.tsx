@@ -6,16 +6,22 @@ export const BlogForm = ({ post, onClose, onSave }) => {
   
     const handleSubmit = async (e) => {
       e.preventDefault();
-      
       const method = post ? 'PUT' : 'POST';
-      const url = post ? `/api/blog/${post.id}` : '/api/blog';
-      
+      const url = post ? `/api/blogs/${post.id}` : '/api/blogs';
+    
       try {
-        await fetch(url, {
+        const response = await fetch(url, {
           method,
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title, content }),
+          body: JSON.stringify({ 
+            title, 
+            content,
+            author: "Default Author", // Add author field or collect from form
+            categories: "Default",    // Add categories input in form
+            date: new Date().toISOString()
+          }),
         });
+        if (!response.ok) throw new Error('Failed to save');
         onSave();
       } catch (error) {
         console.error('Error saving post:', error);

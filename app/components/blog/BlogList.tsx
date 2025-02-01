@@ -1,8 +1,25 @@
 "use client"
-
+import { NextResponse } from 'next/server';
+import { getDocs, collection } from 'firebase/firestore';
+import { db } from '@/app/lib/firebase';
 import { useState, useEffect } from 'react'
-import { BlogList } from '../../app/components/bloglist'
+import { BlogList } from '@/app/components/bloglist';
 
+export async function GET() {
+  try {
+    const querySnapshot = await getDocs(collection(db, 'blogs'));
+    const posts = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    return NextResponse.json(posts);
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Failed to fetch posts' },
+      { status: 500 }
+    );
+  }
+}
 export default function BlogPage() {
   const [posts, setPosts] = useState([])
   const [loading, setLoading] = useState(true)

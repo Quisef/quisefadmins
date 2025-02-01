@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "../../lib/firebase";
+import { auth } from "@/lib/firebase";
 import { signInWithEmailAndPassword, AuthError } from "firebase/auth";
 import { z } from "zod";
 

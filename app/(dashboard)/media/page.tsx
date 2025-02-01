@@ -1,6 +1,6 @@
 "use client"
-import PageHeader from '../../components/pageHeader';
-import Button from '../../components/button';
+import PageHeader from '@/components/pageHeader';
+import Button from '@/components/button';
 
 export default function MediaPage() {
   return (

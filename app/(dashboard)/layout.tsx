@@ -1,6 +1,6 @@
 import Link from 'next/link'
-import { Sidebar } from "../components/Sidebar"
-import { TopNav } from "../components/TopNav"
+import { Sidebar } from "@/components/Sidebar"
+import { TopNav } from "@/components/TopNav"
 
 export default function DashboardLayout({
   children,

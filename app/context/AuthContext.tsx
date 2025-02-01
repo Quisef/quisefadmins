@@ -1,51 +1,51 @@
-'use client'
-import { createContext, useContext, useEffect, useState } from 'react';
+"use client"
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { auth } from '@/lib/firebase'; // Adjust the import according to your setup
 
-const AuthContext = createContext();
+interface AuthContextType {
+  user: any;
+  signIn: (email: string, password: string) => Promise<void>;
+  signOut: () => Promise<void>;
+}
 
-export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+const AuthContext = createContext<AuthContextType>({
+  user: null,
+  signIn: async () => {},
+  signOut: async () => {},
+});
+
+export const useAuth = () => useContext(AuthContext);
+
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const res = await fetch('/api/auth/check'); // API to validate cookie or fetch user details
-      if (res.ok) {
-        const data = await res.json();
-        setUser(data.user);
-      } else {
-        setUser(null);
-      }
-    };
-
-    checkAuth();
-  }, []);
-
-  const signIn = async (email, password) => {
-    const res = await fetch('/api/auth', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user || null);
+      setLoading(false);
     });
 
-    if (!res.ok) {
-      const { error } = await res.json();
-      throw new Error(error);
-    }
+    return () => unsubscribe();
+  }, []);
 
-    const data = await res.json();
-    setUser(data.user);
+  const signIn = async (email: string, password: string) => {
+    await signInWithEmailAndPassword(auth, email, password);
   };
 
-  const logout = async () => {
-    await fetch('/api/logout', { method: 'POST' });
+  const signOut = async () => {
+    await signOut(auth);
     setUser(null);
   };
 
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
   return (
-    <AuthContext.Provider value={{ user, signIn, logout }}>
+    <AuthContext.Provider value={{ user, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );
 };
-
-export const useAuth = () => useContext(AuthContext);

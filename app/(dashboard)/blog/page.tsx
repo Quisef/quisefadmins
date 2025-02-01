@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { Loader2, Upload, X } from "lucide-react";
-import { db } from "../../lib/firebase";
-import { collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, Timestamp } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, Timestamp, updateDoc } from "firebase/firestore";
 import Image from "next/image";
 import axios from "axios";
 
@@ -28,7 +28,6 @@ interface Blog {
   createdAt: Timestamp;
 }
 
-// Update your initial state to match the interface
 const INITIAL_BLOG_STATE: BlogFormState = {
   title: "",
   content: "",
@@ -45,32 +44,36 @@ const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 const uploadImageToCloudinary = async (file: File): Promise<string> => {
   try {
     const formData = new FormData();
-    formData.append("file", file);
-    formData.append("upload_preset", process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!);
-    
-    // Add timestamp for security
-    formData.append("timestamp", `${Date.now()}`);
+    formData.append('file', file);
+    formData.append('upload_preset', 'ml_default');
 
     const response = await axios.post(
-      `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`,
+      `https://api.cloudinary.com/v1_1/dyl8jpo9a/image/upload`,
       formData,
       {
         headers: {
-          "Content-Type": "multipart/form-data",
+          'Content-Type': 'multipart/form-data',
         },
-        // Add timeout to prevent hanging requests
         timeout: 30000
       }
     );
 
-    if (response.status !== 200) {
-      throw new Error(`Cloudinary error: ${response.data.error.message}`);
+    if (!response.data.secure_url) {
+      throw new Error('Cloudinary upload failed - no secure URL returned');
     }
 
     return response.data.secure_url;
   } catch (error) {
-    console.error("Cloudinary upload error details:", error.response?.data);
-    throw new Error("Image upload failed. Please check your Cloudinary configuration.");
+    console.error('Cloudinary Upload Error:', {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data,
+      config: {
+        cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
+        upload_preset: process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET
+      }
+    });
+    throw new Error(`Image upload failed: ${error.response?.data?.error?.message || error.message}`);
   }
 };
 
@@ -148,6 +151,8 @@ const BlogPage = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [currentBlogId, setCurrentBlogId] = useState<string | null>(null);
 
   const fetchBlogs = useCallback(async () => {
     try {
@@ -162,7 +167,6 @@ const BlogPage = () => {
     fetchBlogs();
   }, [fetchBlogs]);
 
-  // Updated handleImageSelect function
   const handleImageSelect = (file: File) => {
     if (file.size > MAX_IMAGE_SIZE) {
       setError("File size exceeds 5MB limit.");
@@ -181,6 +185,21 @@ const BlogPage = () => {
     setNewBlog((prev) => ({ ...prev, imageUrl: null, imagePreview: null }));
   };
 
+  const handleEdit = (blog: Blog) => {
+    setNewBlog({
+      title: blog.title,
+      content: blog.content,
+      author: blog.author,
+      categories: blog.categories,
+      date: blog.date,
+      imageUrl: null,
+      imagePreview: blog.imageUrl || null,
+    });
+    setCurrentBlogId(blog.id);
+    setIsEditing(true);
+    setIsCreating(true);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -191,8 +210,9 @@ const BlogPage = () => {
       if (!newBlog.title || !newBlog.content || !newBlog.author || !newBlog.categories) {
         throw new Error("Please fill in all required fields");
       }
+
       // Handle image upload if exists
-      let uploadedImageUrl = null;
+      let uploadedImageUrl = newBlog.imagePreview || null;
       if (newBlog.imageUrl instanceof File) {
         try {
           uploadedImageUrl = await uploadImageToCloudinary(newBlog.imageUrl);
@@ -202,7 +222,7 @@ const BlogPage = () => {
         }
       }
 
-       // Prepare blog data for Firebase
+      // Prepare blog data for Firebase
       const blogData = {
         title: newBlog.title,
         content: newBlog.content,
@@ -210,27 +230,45 @@ const BlogPage = () => {
         categories: newBlog.categories,
         date: newBlog.date,
         imageUrl: uploadedImageUrl,
-        createdAt: Timestamp.now()
+        createdAt: Timestamp.now(),
       };
 
-      // Add to Firebase
-      const docRef = await addDoc(collection(db, "blogs"), blogData);
-      
-      // Update local state with the new blog
-      const newBlogWithId: Blog = {
-        id: docRef.id,
-        ...blogData
-      };
-      
-      setBlogs(prev => [newBlogWithId, ...prev]);
+      if (isEditing && currentBlogId) {
+        // Update existing blog
+        await updateDoc(doc(db, "blogs", currentBlogId), blogData);
+        setBlogs((prev) =>
+          prev.map((blog) =>
+            blog.id === currentBlogId ? { ...blog, ...blogData } : blog
+          )
+        );
+      } else {
+        // Add new blog
+        const docRef = await addDoc(collection(db, "blogs"), blogData);
+        setBlogs((prev) => [{ id: docRef.id, ...blogData }, ...prev]);
+      }
+
+      // Reset form and state
       setNewBlog(INITIAL_BLOG_STATE);
       setIsCreating(false);
-      
+      setIsEditing(false);
+      setCurrentBlogId(null);
     } catch (error) {
-      console.error("Error creating blog:", error);
-      setError(error instanceof Error ? error.message : "Failed to create blog");
+      console.error("Error saving blog:", error);
+      setError(error instanceof Error ? error.message : "Failed to save blog");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const deleteBlog = async (id: string, imageUrl: string | null) => {
+    if (!window.confirm("Are you sure you want to delete this blog?")) return;
+    
+    try {
+      await deleteDoc(doc(db, "blogs", id));
+      setBlogs((prev) => prev.filter((blog) => blog.id !== id));
+    } catch (error) {
+      console.error("Error deleting blog:", error);
+      setError("Failed to delete blog");
     }
   };
 
@@ -244,28 +282,9 @@ const BlogPage = () => {
       ),
     [blogs, searchTerm]
   );
-  // Add deleteBlog function
-  const deleteBlog = async (id: string, imageUrl: string | null) => {
-    if (!window.confirm("Are you sure you want to delete this blog?")) return;
-    
-    try {
-      await deleteDoc(doc(db, "blogs", id));
-      setBlogs(prev => prev.filter(blog => blog.id !== id));
-      
-      // Optional: Add Cloudinary image deletion here if needed
-      // if (imageUrl) {
-      //   await axios.delete('/api/delete-image', { data: { url: imageUrl } });
-      // }
-    } catch (error) {
-      console.error("Error deleting blog:", error);
-      setError("Failed to delete blog");
-    }
-  };
 
-  // ... rest of your component JSX remains similar, just update the blog card to use new structure ...
   return (
     <div className="container mx-auto p-4">
-      {/* ... existing JSX ... */}
       <h1 className="text-2xl font-bold mb-4">Manage Blogs</h1>
 
       <div className="flex justify-between items-center gap-4 mb-6">
@@ -277,7 +296,11 @@ const BlogPage = () => {
           className="flex-grow max-w-xl p-2 border rounded"
         />
         <button
-          onClick={() => setIsCreating(true)}
+          onClick={() => {
+            setIsCreating(true);
+            setIsEditing(false);
+            setNewBlog(INITIAL_BLOG_STATE);
+          }}
           className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 whitespace-nowrap"
         >
           Create New Blog
@@ -291,13 +314,19 @@ const BlogPage = () => {
       )}
 
       {isCreating && (
-        <div className="fixed inset-0 bg-black/50 flex justify-center items-center p-4">
+        <div className="fixed inset-0 bg-black/50 flex justify-center items-center p-4 z-50">
           <div className="bg-white w-full max-w-3xl rounded-lg shadow-xl">
             <div className="p-6 border-b border-gray-200">
               <div className="flex justify-between items-center">
-                <h2 className="text-xl font-bold">Create Blog</h2>
+                <h2 className="text-xl font-bold">
+                  {isEditing ? "Edit Blog" : "Create Blog"}
+                </h2>
                 <button
-                  onClick={() => setIsCreating(false)}
+                  onClick={() => {
+                    setIsCreating(false);
+                    setIsEditing(false);
+                    setNewBlog(INITIAL_BLOG_STATE);
+                  }}
                   className="text-gray-500 hover:text-gray-700"
                 >
                   <X className="w-6 h-6" />
@@ -316,7 +345,7 @@ const BlogPage = () => {
                       name="title"
                       placeholder="Enter blog title"
                       value={newBlog.title}
-                      onChange={(e) => setNewBlog(prev => ({...prev, title: e.target.value}))}
+                      onChange={(e) => setNewBlog((prev) => ({ ...prev, title: e.target.value }))}
                       required
                       className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
@@ -330,7 +359,7 @@ const BlogPage = () => {
                       name="content"
                       placeholder="Write your blog content"
                       value={newBlog.content}
-                      onChange={(e) => setNewBlog(prev => ({...prev, content: e.target.value}))}
+                      onChange={(e) => setNewBlog((prev) => ({ ...prev, content: e.target.value }))}
                       required
                       className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-h-[200px]"
                     />
@@ -344,7 +373,7 @@ const BlogPage = () => {
                       name="author"
                       placeholder="Enter author name"
                       value={newBlog.author}
-                      onChange={(e) => setNewBlog(prev => ({...prev, author: e.target.value}))}
+                      onChange={(e) => setNewBlog((prev) => ({ ...prev, author: e.target.value }))}
                       required
                       className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
@@ -358,7 +387,7 @@ const BlogPage = () => {
                       type="date"
                       name="date"
                       value={newBlog.date}
-                      onChange={(e) => setNewBlog(prev => ({...prev, date: e.target.value}))}
+                      onChange={(e) => setNewBlog((prev) => ({ ...prev, date: e.target.value }))}
                       required
                       className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
@@ -372,7 +401,7 @@ const BlogPage = () => {
                       name="categories"
                       placeholder="Enter categories (comma-separated)"
                       value={newBlog.categories}
-                      onChange={(e) => setNewBlog(prev => ({...prev, categories: e.target.value}))}
+                      onChange={(e) => setNewBlog((prev) => ({ ...prev, categories: e.target.value }))}
                       required
                       className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
@@ -390,7 +419,11 @@ const BlogPage = () => {
                 <div className="flex justify-end gap-2 pt-4">
                   <button
                     type="button"
-                    onClick={() => setIsCreating(false)}
+                    onClick={() => {
+                      setIsCreating(false);
+                      setIsEditing(false);
+                      setNewBlog(INITIAL_BLOG_STATE);
+                    }}
                     className="px-4 py-2 border rounded hover:bg-gray-100"
                   >
                     Cancel
@@ -406,7 +439,7 @@ const BlogPage = () => {
                         Saving...
                       </div>
                     ) : (
-                      'Save Blog'
+                      isEditing ? 'Update Blog' : 'Save Blog'
                     )}
                   </button>
                 </div>
@@ -445,19 +478,26 @@ const BlogPage = () => {
                 <span className="text-sm font-medium text-gray-700">
                   By {blog.author}
                 </span>
-                <button
-                  onClick={() => deleteBlog(blog.id, blog.imageUrl)}
-                  className="px-3 py-1.5 text-sm bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors"
-                >
-                  Delete
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleEdit(blog)}
+                    className="px-3 py-1.5 text-sm bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => deleteBlog(blog.id, blog.imageUrl)}
+                    className="px-3 py-1.5 text-sm bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors"
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* ... rest of your component JSX ... */}
       {filteredBlogs.length === 0 && (
         <p className="text-center text-gray-500">
           No blogs found. {blogs.length === 0 ? 'Try creating one!' : 'Try adjusting your search.'}

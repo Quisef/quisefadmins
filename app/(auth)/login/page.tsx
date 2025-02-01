@@ -2,11 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../context/AuthContext';
-
-interface LoginCredentials {
-  email: string;
-  password: string;
-}
+import type { LoginCredentials } from './types'; // Adjust the import according to your setup
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
