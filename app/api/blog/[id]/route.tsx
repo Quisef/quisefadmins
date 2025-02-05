@@ -1,7 +1,7 @@
 // app/api/blogs/[id]/route.js
 import { NextResponse } from 'next/server';
 import { doc, deleteDoc, getDoc } from 'firebase/firestore';
-import { db } from '@/app/lib/firebase';
+import { db } from '../../../app/lib/firebase';
 
 export async function DELETE(request, { params }) {
   try {

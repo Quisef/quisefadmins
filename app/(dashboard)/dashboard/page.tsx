@@ -1,4 +1,7 @@
+
 import Card from "@/components/card";
+
+
 
 export default function DashboardPage() {
   const data = [

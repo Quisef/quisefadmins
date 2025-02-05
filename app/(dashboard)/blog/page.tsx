@@ -65,22 +65,32 @@ const uploadImageToCloudinary = async (file: File): Promise<string> => {
     return response.data.secure_url;
   } catch (error) {
     console.error('Cloudinary Upload Error:', {
-      message: error.message,
-      status: error.response?.status,
-      data: error.response?.data,
+      message: (error as any).message,
+      status: (error as any).response?.status,
+      data: (error as any).response?.data,
       config: {
         cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
         upload_preset: process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET
       }
     });
-    throw new Error(`Image upload failed: ${error.response?.data?.error?.message || error.message}`);
+    if (axios.isAxiosError(error)) {
+      throw new Error(`Image upload failed: ${error.response?.data?.error?.message || error.message}`);
+    } else {
+      throw new Error(`Image upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 };
 
-const ImagePicker = ({ onImageSelect, currentImage, onRemoveImage }) => {
+interface ImagePickerProps {
+  onImageSelect: (file: File) => void;
+  currentImage: string | null;
+  onRemoveImage: () => void;
+}
+
+const ImagePicker = ({ onImageSelect, currentImage, onRemoveImage }: ImagePickerProps) => {
   const [isDragging, setIsDragging] = useState(false);
 
-  const handleFile = (file) => {
+  const handleFile = (file: File) => {
     if (file.size > MAX_IMAGE_SIZE) {
       alert("File size exceeds 5MB limit.");
       return;
@@ -88,12 +98,12 @@ const ImagePicker = ({ onImageSelect, currentImage, onRemoveImage }) => {
     onImageSelect(file);
   };
 
-  const handleDrag = useCallback((e) => {
+  const handleDrag = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
   }, []);
 
-  const handleDrop = (e) => {
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
@@ -222,6 +232,7 @@ const BlogPage = () => {
         }
       }
 
+
       // Prepare blog data for Firebase
       const blogData = {
         title: newBlog.title,
@@ -260,15 +271,45 @@ const BlogPage = () => {
     }
   };
 
-  const deleteBlog = async (id: string, imageUrl: string | null) => {
-    if (!window.confirm("Are you sure you want to delete this blog?")) return;
+  const [deleteModalData, setDeleteModalData] = useState<{
+    isOpen: boolean;
+    blogId: string | null;
+    blogTitle: string;
+  }>({
+    isOpen: false,
+    blogId: null,
+    blogTitle: "",
+  });
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDeleteClick = (id: string, title: string) => {
+    setDeleteModalData({
+      isOpen: true,
+      blogId: id,
+      blogTitle: title,
+    });
+  };
+
+  const deleteBlog = async () => {
+    if (!deleteModalData.blogId) return;
+    
+    setIsDeleting(true);
+    setError(null);
     
     try {
-      await deleteDoc(doc(db, "blogs", id));
-      setBlogs((prev) => prev.filter((blog) => blog.id !== id));
+      await deleteDoc(doc(db, "blogs", deleteModalData.blogId));
+      setBlogs((prev) => prev.filter((blog) => blog.id !== deleteModalData.blogId));
+      setDeleteModalData({ isOpen: false, blogId: null, blogTitle: "" });
     } catch (error) {
       console.error("Error deleting blog:", error);
-      setError("Failed to delete blog");
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete blog';
+      if (errorMessage.includes('permission-denied')) {
+        setError("You don't have permission to delete this blog. Please check your authentication status.");
+      } else {
+        setError(`Failed to delete blog: ${errorMessage}`);
+      }
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -448,6 +489,56 @@ const BlogPage = () => {
           </div>
         </div>
       )}
+
+      {/* Add the delete modal */}
+      {deleteModalData.isOpen && (
+        <div className="fixed inset-0 bg-black/50 flex justify-center items-center p-4 z-50">
+          <div className="bg-white w-full max-w-md rounded-lg shadow-xl">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex justify-between items-center">
+                <h2 className="text-xl font-bold">Delete Blog</h2>
+                <button
+                  onClick={() => setDeleteModalData({ isOpen: false, blogId: null, blogTitle: "" })}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              <p className="mb-4">
+                Are you sure you want to delete "<span className="font-semibold">{deleteModalData.blogTitle}</span>"? 
+                This action cannot be undone.
+              </p>
+              
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => setDeleteModalData({ isOpen: false, blogId: null, blogTitle: "" })}
+                  disabled={isDeleting}
+                  className="px-4 py-2 border rounded hover:bg-gray-100 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={deleteBlog}
+                  disabled={isDeleting}
+                  className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 disabled:opacity-50 flex items-center"
+                >
+                  {isDeleting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Deleting...
+                    </>
+                  ) : (
+                    'Delete'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {filteredBlogs.map((blog) => (
@@ -486,7 +577,7 @@ const BlogPage = () => {
                     Edit
                   </button>
                   <button
-                    onClick={() => deleteBlog(blog.id, blog.imageUrl)}
+                    onClick={() =>  handleDeleteClick(blog.id, blog.title)}
                     className="px-3 py-1.5 text-sm bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors"
                   >
                     Delete

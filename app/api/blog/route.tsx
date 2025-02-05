@@ -1,8 +1,8 @@
 // app/api/blogs/route.js in your Next.js admin panel
 import { NextResponse } from 'next/server';
-import { db } from '@/app/lib/firebase';
+import { db } from '../../lib/firebase';
 import { collection, addDoc, getDocs } from 'firebase/firestore';
-import cloudinary from '@/app/lib/cloudinary';
+import cloudinary from '../../lib/cloudinary';
 
 export async function POST(request) {
   try {

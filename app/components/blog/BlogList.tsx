@@ -1,9 +1,10 @@
 "use client"
 import { NextResponse } from 'next/server';
 import { getDocs, collection } from 'firebase/firestore';
-import { db } from '@/app/lib/firebase';
+import { db } from '../../../app/lib/firebase';
 import { useState, useEffect } from 'react'
-import { BlogList } from '@/app/components/bloglist';
+import BlogList from './BlogList' // Adjust the import path according to your project structure
+
 
 export async function GET() {
   try {
@@ -40,7 +41,7 @@ export default function BlogPage() {
   }
 
   // Delete a post
-  const handleDelete = async (postId) => {
+  const handleDelete = async (postId: string) => {
     try {
       const response = await fetch(`/api/posts/${postId}`, {
         method: 'DELETE',
@@ -56,7 +57,7 @@ export default function BlogPage() {
   }
 
   // Handle edit post
-  const handleEdit = async (post) => {
+  const handleEdit = async (post: { id: string; [key: string]: any }) => {
     // Navigate to edit page or open edit modal
     // This is a placeholder - implement based on your app's navigation strategy
     console.log('Edit post:', post)

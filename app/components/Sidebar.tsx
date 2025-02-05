@@ -3,7 +3,7 @@ import Link from 'next/link';
 
 export const Sidebar = () => {
   const menuItems = [
-    { href: '/', label: 'Dashboard', icon: '🏠' },
+    { href: '/dashboard', label: 'Dashboard', icon: '🏠' },
     { href: '/users', label: 'Users', icon: '👥' },
     { href: '/blog', label: 'Blog', icon: '📝' },
     { href: '/media', label: 'Media', icon: '🖼️' },

@@ -1,35 +1,36 @@
-'use client';
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '../../context/AuthContext';
-import type { LoginCredentials } from './types'; // Adjust the import according to your setup
+"use client";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const { signIn, user } = useAuth();
-
-  // Redirect if user is already logged in
-  useEffect(() => {
-    if (user) {
-      router.push('/dashboard');
-    }
-  }, [user, router]);
+  const { user, loading, signIn } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setIsLoading(true);
-    setError('');
-
+    setIsLoading(false);
+    setError("");
+  
     try {
       await signIn(email, password);
-      router.push('/dashboard');
-    } catch (error) {
-      console.error('Login error:', error);
-      setError(error instanceof Error ? error.message : 'Failed to sign in');
+      router.push("/dashboard");
+    } catch (error: any) {
+      const errorCode = error.code;
+      switch(errorCode) {
+        case 'auth/wrong-password':
+          setError("Incorrect password");
+          break;
+        case 'auth/user-not-found':
+          setError("No user found with this email");
+          break;
+        default:
+          setError("Authentication failed");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -88,7 +89,7 @@ export default function LoginPage() {
             disabled={isLoading}
             className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
           >
-            {isLoading ? 'Signing in...' : 'Sign in'}
+            {isLoading ? "Signing in..." : "Sign in"}
           </button>
         </form>
       </div>

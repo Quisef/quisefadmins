@@ -1,10 +1,23 @@
 "use client"
 import React, { useState } from "react";
-export const BlogForm = ({ post, onClose, onSave }) => {
+
+interface Post {
+  id?: string;
+  title: string;
+  content: string;
+}
+
+interface BlogFormProps {
+  post?: Post;
+  onClose: () => void;
+  onSave: () => void;
+}
+
+export const BlogForm: React.FC<BlogFormProps> = ({ post, onClose, onSave }) => {
     const [title, setTitle] = useState(post?.title || '');
     const [content, setContent] = useState(post?.content || '');
   
-    const handleSubmit = async (e) => {
+    const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       const method = post ? 'PUT' : 'POST';
       const url = post ? `/api/blogs/${post.id}` : '/api/blogs';
