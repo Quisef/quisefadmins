@@ -1,36 +1,34 @@
-import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
-import { getAuth, Auth } from 'firebase/auth';
-import { getFirestore, Firestore } from 'firebase/firestore';
+import { initializeApp, getApps } from "firebase/app";
+import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 
+// Read Firebase configuration from environment variables
 const firebaseConfig = {
-  apiKey: "AIzaSyAB-WbFZTQ8bfHA3W44Q9ithgDGWos1jss",
-  authDomain: "quietshelter-b5f54.firebaseapp.com",
-  projectId: "quietshelter-b5f54",
-  storageBucket: "quietshelter-b5f54.firebasestorage.app",
-  messagingSenderId: "964395764892",
-  appId: "1:964395764892:web:8cb55955d6f4a92f08f159"
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Initialize Firebase
-let app: FirebaseApp;
-let auth: Auth;
-let db: Firestore;
-
-try {
-  if (!getApps().length) {
-    app = initializeApp(firebaseConfig);
-    console.log('Firebase initialized successfully');
-  } else {
-    app = getApps()[0];
-    console.log('Using existing Firebase instance');
-  }
-  
-  auth = getAuth(app);
-  db = getFirestore(app);
-  console.log('Firebase Auth and Firestore initialized successfully');
-} catch (error) {
-  console.error('Firebase initialization error:', error);
-  throw error;
+// Validate Firebase configuration
+if (
+  !firebaseConfig.apiKey ||
+  !firebaseConfig.authDomain ||
+  !firebaseConfig.projectId ||
+  !firebaseConfig.storageBucket ||
+  !firebaseConfig.messagingSenderId ||
+  !firebaseConfig.appId
+) {
+  throw new Error("Firebase configuration is missing or incomplete.");
 }
+
+// Initialize Firebase app if not already initialized
+let app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+
+// Export Firebase services
+const auth = getAuth(app);
+const db = getFirestore(app);
 
 export { auth, db };

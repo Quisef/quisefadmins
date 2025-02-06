@@ -40,43 +40,59 @@ const INITIAL_BLOG_STATE: BlogFormState = {
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 
-// Cloudinary Upload Function
 const uploadImageToCloudinary = async (file: File): Promise<string> => {
   try {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', 'ml_default');
+    // Validate environment variables
+    const cloud_name = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+    const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 
-    const response = await axios.post(
-      `https://api.cloudinary.com/v1_1/dyl8jpo9a/image/upload`,
-      formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-        timeout: 30000
-      }
-    );
-
-    if (!response.data.secure_url) {
-      throw new Error('Cloudinary upload failed - no secure URL returned');
+    if (!cloud_name|| !uploadPreset) {
+      throw new Error("Cloudinary configuration is missing or incomplete.");
     }
 
-    return response.data.secure_url;
+    // Create FormData object
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", uploadPreset);
+
+    // Construct the API URL dynamically using the cloud name
+    const apiUrl = `https://api.cloudinary.com/v1_1/${cloud_name}/image/upload`;
+
+    // Make the POST request to Cloudinary
+    const response = await axios.post(apiUrl, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+      timeout: 30000, // Set a timeout of 30 seconds
+    });
+
+    // Ensure the response contains a secure URL
+    if (!response.data.secure_url) {
+      throw new Error("Cloudinary upload failed - no secure URL returned");
+    }
+
+    return response.data.secure_url; // Return the secure URL
   } catch (error) {
-    console.error('Cloudinary Upload Error:', {
+    // Log detailed error information for debugging
+    console.error("Cloudinary Upload Error:", {
       message: (error as any).message,
       status: (error as any).response?.status,
       data: (error as any).response?.data,
       config: {
         cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
-        upload_preset: process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET
-      }
+        upload_preset: process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET,
+      },
     });
+
+    // Throw a more descriptive error
     if (axios.isAxiosError(error)) {
-      throw new Error(`Image upload failed: ${error.response?.data?.error?.message || error.message}`);
+      throw new Error(
+        `Image upload failed: ${error.response?.data?.error?.message || error.message}`
+      );
     } else {
-      throw new Error(`Image upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Image upload failed: ${error instanceof Error ? error.message : "Unknown error"}`
+      );
     }
   }
 };
