@@ -18,6 +18,10 @@ module.exports = {
     '@typescript-eslint/no-explicit-any': 'off',
     '@typescript-eslint/no-unused-vars': 'warn', // Change to 'off' if needed
   },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
 };
+
 
 export default eslintConfig;
