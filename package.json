@@ -6,8 +6,7 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "deploy": "npx wrangler pages deploy .vercel/output/static"
+    "lint": "next lint"
   },
   "dependencies": {
     "@firebase/auth": "^1.8.2",
