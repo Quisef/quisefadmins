@@ -7,6 +7,8 @@ export const Sidebar = () => {
     { href: '/users', label: 'Users', icon: '👥' },
     { href: '/blog', label: 'Blog', icon: '📝' },
     { href: '/media', label: 'Media', icon: '🖼️' },
+    { href: '/project', label: 'Project', icon: '🖼️' },
+    { href: '/membership', label: 'Members', icon: '🖼️' },
     { href: '/contact', label: 'Contact', icon: '✉️' },
     { href: '/subscribers', label: 'Subscribers', icon: '📮' },
     { href: '/analytics', label: 'Analytics', icon: '📊' },
