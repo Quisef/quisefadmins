@@ -109,7 +109,7 @@ export default function WashPage() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 mb-8">
         <div className="relative h-64 sm:h-80 md:h-96 w-full rounded-lg overflow-hidden shadow-md">
           <Image
-            src="/images/washori.jpg"
+            src="/images/hygiene.jpeg"
             alt="Water, Sanitation, and Hygiene (WASH)"
             fill
             style={{ objectFit: 'cover' }}

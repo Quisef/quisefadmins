@@ -110,7 +110,7 @@ const DonationPage: React.FC = () => {
                     'Join us in providing a safe haven for vulnerable children fleeing the harsh realities of climate change. Your support can offer them the comfort and security they so desperately need.',
                   raised: 500,
                   goal: 5000,
-                  color: 'yellow',
+                  color: 'blue',
                 },
                 {
                   image: '/images/kids.jpg',
@@ -128,7 +128,7 @@ const DonationPage: React.FC = () => {
                     'Discover how we are empowering young people in the agricultural sector, equipping them with the skills and resources to cultivate a brighter future.',
                   raised: 500,
                   goal: 5000,
-                  color: 'green',
+                  color: 'blue',
                 },
               ].map((cause, index) => (
                 <div

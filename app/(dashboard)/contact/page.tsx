@@ -37,7 +37,7 @@ const ContactsPage = () => {
 
   // Fetch contacts with pagination
   useEffect(() => {
-    const contactsRef = collection(db, "messages");
+    const contactsRef = collection(db, "contacts");
     let q = query(contactsRef, orderBy("name"), limit(contactsPerPage));
 
     if (currentPage > 1 && lastDoc) {
@@ -85,7 +85,7 @@ const ContactsPage = () => {
     setError(null);
 
     try {
-      const contactDoc = doc(db, "messages", editingContact.id); // Changed to "messages" to match fetch
+      const contactDoc = doc(db, "contacts", editingContact.id); // Changed to "messages" to match fetch
       await updateDoc(contactDoc, {
         name: editingContact.name,
         email: editingContact.email,
@@ -102,7 +102,7 @@ const ContactsPage = () => {
   // Delete Contact
   const handleDelete = async (id: string) => {
     try {
-      const contactDoc = doc(db, "messages", id); // Changed to "messages"
+      const contactDoc = doc(db, "contacts", id); // Changed to "messages"
       await deleteDoc(contactDoc);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Deletion failed");

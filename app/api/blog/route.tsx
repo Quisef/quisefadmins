@@ -1,28 +1,10 @@
+//app/api/blog/route.tsx
 import { NextResponse } from "next/server";
 import { db } from "@/lib/firebase";
 import { collection, addDoc, Timestamp } from "firebase/firestore";
 import { initializeApp, getApps } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
-import admin from "firebase-admin"; // Import admin for credential access
 
-const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT;
-  if (!serviceAccount) {
-    throw new Error("FIREBASE_SERVICE_ACCOUNT environment variable is missing");
-  }
-
-  let parsedServiceAccount;
-  try {
-    parsedServiceAccount = JSON.parse(serviceAccount);
-  } catch (parseError) {
-    console.error("Failed to parse FIREBASE_SERVICE_ACCOUNT:", parseError);
-    throw new Error("FIREBASE_SERVICE_ACCOUNT is not a valid JSON string");
-  }
-
-  if (!getApps().length) {
-    initializeApp({
-      credential: admin.credential.cert(parsedServiceAccount),
-    });
-  }
 
 
 export async function POST(request: Request) {

@@ -26,8 +26,8 @@ export default function StrategyPage() {
       </section>
 
       <section className="py-12 md:py-16 px-6">
-        <div className="container mx-auto max-w-5xl space-y-8 md:space-y-12">
-          <div className="space-y-6">
+        <div className="container mx-auto max-w-5xl flex flex-col lg:flex-row items-center gap-8">
+          <div className="lg:w-1/2 space-y-6">
             <h1 className="text-3xl sm:text-4xl font-bold text-gray-800">
               <em>Executive Director</em>
             </h1>
@@ -35,13 +35,13 @@ export default function StrategyPage() {
               I am pleased to welcome you to Quiet Shelter Empowerment Foundation. On behalf of the work team, I invite you to explore the foundation’s platform. We created this platform to make it easier for you to be a part of the positive change we are creating for a better world to live in. With time fleeting and so much impact to be made, we are passionate about bringing hope alive for the vulnerable and disadvantaged members of our communities. This initiative really needs more ambassadors as we envision together a time when many lives are transformed.
             </p>
           </div>
-          <div className="relative h-64 sm:h-80 lg:h-96 w-full rounded-[90px_10px_10px_10px] overflow-hidden ">
+          <div className="relative h-84 sm:h-80 lg:h-96 w-full rounded-[90px_10px_10px_10px] overflow-hidden ">
             <Image
               src="/images/Chama.jpg"
               alt="Executive Director Speech"
               fill
               style={{ objectFit: 'cover' }}
-              className="absolute inset-0 w-full h-full object-fit object-center transition-transform duration-500 hover:scale-105"
+              className="absolute inset-0 w-full h-full  transition-transform duration-500 hover:scale-105"
             />
           </div>
         </div>
@@ -171,14 +171,14 @@ export default function StrategyPage() {
                 href: '/strategy/climate',
               },
               {
-                image: '/images/teacher.png',
+                image: '/images/edu.jpeg',
                 title: 'Education',
                 description:
                   'Access to quality education, from early childhood through adulthood, is essential for building a more equitable and prosperous world.',
                 href: '/strategy/education',
               },
               {
-                image: '/images/GBV.png',
+                image: '/images/gbv.jpeg',
                 title: 'Sexual and Gender-Based Violence (SGBV)',
                 description:
                   'Addressing SGBV requires comprehensive strategies involving legal, social, and cultural interventions.',
@@ -192,7 +192,7 @@ export default function StrategyPage() {
                 href: '/strategy/wash',
               },
               {
-                image: '/images/wt.png',
+                image: '/images/hone.jpeg',
                 title: 'Shelter and Infrastructure',
                 description:
                   'Developing resilient shelters and rebuilding infrastructure supports livelihoods and economic activities, providing vulnerable populations with skills and resources for sustainable growth.',

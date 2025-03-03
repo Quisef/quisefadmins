@@ -1,34 +1,16 @@
+// app/api/blog/[blogID]/route.tsx
 import { NextResponse } from "next/server";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, updateDoc, deleteDoc } from "firebase/firestore";
 import { v2 as cloudinary } from "cloudinary";
 import { initializeApp, getApps } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
-import admin from "firebase-admin"; // Import admin for credential access
 
-const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT;
-  if (!serviceAccount) {
-    throw new Error("FIREBASE_SERVICE_ACCOUNT environment variable is missing");
-  }
-
-  let parsedServiceAccount;
-  try {
-    parsedServiceAccount = JSON.parse(serviceAccount);
-  } catch (parseError) {
-    console.error("Failed to parse FIREBASE_SERVICE_ACCOUNT:", parseError);
-    throw new Error("FIREBASE_SERVICE_ACCOUNT is not a valid JSON string");
-  }
-
-  if (!getApps().length) {
-    initializeApp({
-      credential: admin.credential.cert(parsedServiceAccount),
-    });
-  }
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, { params }: { params: { blogID: string } }) {
   try {
     const body = await request.json();
     const requiredFields = ["title", "content", "author"];
@@ -38,7 +20,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       }
     }
 
-    const blogRef = doc(db, "blogs", params.id);
+    const blogRef = doc(db, "blogs", params.blogID);
     const blogDoc = await getDoc(blogRef);
     if (!blogDoc.exists()) {
       return NextResponse.json({ error: "Blog not found" }, { status: 404 });
@@ -57,9 +39,9 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   }
 }
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, { params }: { params: {  blogID: string } }) {
   try {
-    const blogRef = doc(db, "blogs", params.id);
+    const blogRef = doc(db, "blogs", params. blogID);
     const blogDoc = await getDoc(blogRef);
     if (!blogDoc.exists()) {
       return NextResponse.json({ error: "Blog not found" }, { status: 404 });

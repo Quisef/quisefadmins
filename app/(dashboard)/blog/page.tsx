@@ -1,3 +1,4 @@
+//app/(dashboard)/bloge/page.tsx
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
@@ -13,8 +14,8 @@ interface BlogFormState {
   author: string;
   categories: string;
   date: string;
-  imageFiles: File[];
-  imagePreviews: string[];
+  imageFile: File | null;
+  imagePreview: string | null;
 }
 
 interface Blog {
@@ -24,7 +25,7 @@ interface Blog {
   author: string;
   categories: string;
   date: string;
-  imageUrls: string[];
+  imageUrl: string | null;
   createdAt: Timestamp;
 }
 
@@ -34,14 +35,13 @@ const INITIAL_BLOG_STATE: BlogFormState = {
   author: "",
   categories: "",
   date: new Date().toISOString().split("T")[0],
-  imageFiles: [],
-  imagePreviews: [],
+  imageFile: null,
+  imagePreview: null,
 };
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
-const MAX_IMAGES = 5; // Maximum number of images allowed
 
-const uploadImagesToCloudinary = async (files: File[]) => {
+const uploadImageToCloudinary = async (file: File) => {
   try {
     const cloud_name = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
     const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
@@ -50,25 +50,21 @@ const uploadImagesToCloudinary = async (files: File[]) => {
       throw new Error("Cloudinary configuration is missing or incomplete.");
     }
 
-    const uploadPromises = files.map(async (file) => {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("upload_preset", uploadPreset);
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", uploadPreset);
 
-      const apiUrl = `https://api.cloudinary.com/v1_1/${cloud_name}/image/upload`;
-      const response = await axios.post(apiUrl, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-        timeout: 30000,
-      });
-
-      if (!response.data.secure_url) {
-        throw new Error("Cloudinary upload failed - no secure URL returned");
-      }
-
-      return response.data.secure_url;
+    const apiUrl = `https://api.cloudinary.com/v1_1/${cloud_name}/image/upload`;
+    const response = await axios.post(apiUrl, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+      timeout: 30000,
     });
 
-    return Promise.all(uploadPromises);
+    if (!response.data.secure_url) {
+      throw new Error("Cloudinary upload failed - no secure URL returned");
+    }
+
+    return response.data.secure_url;
   } catch (error) {
     console.error("Cloudinary Upload Error:", error);
     if (axios.isAxiosError(error)) {
@@ -83,116 +79,74 @@ const uploadImagesToCloudinary = async (files: File[]) => {
 };
 
 interface ImagePickerProps {
-  onImagesSelect: (files: File[]) => void;
-  currentImages: string[];
-  onRemoveImage: (index: number) => void;
-  newImages: File[];
-  onRemoveNewImage: (index: number) => void;
+  onImageSelect: (file: File) => void;
+  currentImage: string | null;
+  onRemoveImage: () => void;
   isEditing: boolean;
 }
 
 const ImagePicker = ({
-  onImagesSelect,
-  currentImages,
+  onImageSelect,
+  currentImage,
   onRemoveImage,
-  newImages,
-  onRemoveNewImage,
   isEditing,
 }: ImagePickerProps) => {
-  const handleFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const filesArray = Array.from(e.target.files);
-      const totalImages = currentImages.length + newImages.length + filesArray.length;
-
-      if (totalImages > MAX_IMAGES) {
-        alert(`Maximum ${MAX_IMAGES} images allowed.`);
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      
+      if (file.size > MAX_IMAGE_SIZE) {
+        alert(`File ${file.name} exceeds 5MB limit.`);
         return;
       }
-
-      const validFiles = filesArray.filter((file) => {
-        if (file.size > MAX_IMAGE_SIZE) {
-          alert(`File ${file.name} exceeds 5MB limit.`);
-          return false;
-        }
-        return true;
-      });
-
-      onImagesSelect(validFiles);
+      
+      onImageSelect(file);
     }
   };
 
   return (
     <div className="space-y-2">
       <label className="block text-sm font-medium text-gray-700">
-        Blog Images (max {MAX_IMAGES}, 5MB each)
+        Blog Image (max 5MB)
       </label>
 
-      {/* Existing Images */}
-      {currentImages.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-2">
-          {currentImages.map((url, index) => (
-            <div key={`existing-${index}`} className="relative w-24 h-24">
-              <img
-                src={url}
-                alt={`Existing-${index}`}
-                className="w-full h-full object-cover rounded"
-              />
-              {isEditing && (
-                <button
-                  type="button"
-                  onClick={() => onRemoveImage(index)}
-                  className="absolute top-0 right-0 p-1 bg-red-500 rounded-full text-white hover:bg-red-600"
-                  aria-label="Remove Image"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* New Images */}
-      {newImages.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-2">
-          {newImages.map((file, index) => (
-            <div key={`new-${index}`} className="relative w-24 h-24">
-              <img
-                src={URL.createObjectURL(file)}
-                alt={file.name}
-                className="w-full h-full object-cover rounded"
-              />
-              <button
-                type="button"
-                onClick={() => onRemoveNewImage(index)}
-                className="absolute top-0 right-0 p-1 bg-red-500 rounded-full text-white hover:bg-red-600"
-                aria-label="Remove Image"
-              >
-                <X className="w-4 h-4" />
-              </button>
-              <p className="text-xs truncate w-24">{file.name}</p>
-            </div>
-          ))}
+      {/* Existing or New Image */}
+      {currentImage && (
+        <div className="relative w-40 h-40">
+          <img
+            src={currentImage}
+            alt="Blog image"
+            className="w-full h-full object-cover rounded"
+          />
+          <button
+            type="button"
+            onClick={onRemoveImage}
+            className="absolute top-0 right-0 p-1 bg-red-500 rounded-full text-white hover:bg-red-600"
+            aria-label="Remove Image"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
       )}
 
       {/* File Input */}
-      <div className="relative border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:border-blue-400">
-        <input
-          type="file"
-          accept="image/*"
-          multiple
-          onChange={handleFiles}
-          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-        />
-        <div className="space-y-2">
-          <Upload className="w-10 h-10 mx-auto text-gray-400" />
-          <div className="text-gray-600">
-            <p className="font-medium">Click to upload images</p>
-            <p className="text-sm">SVG, PNG, JPG, or GIF (max. 5MB each)</p>
+      {!currentImage && (
+        <div className="relative border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:border-blue-400">
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleFile}
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+          />
+          <div className="space-y-2">
+            <Upload className="w-10 h-10 mx-auto text-gray-400" />
+            <div className="text-gray-600">
+              <p className="font-medium">Click to upload image</p>
+              <p className="text-sm">SVG, PNG, JPG, or GIF (max. 5MB)</p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
@@ -242,56 +196,42 @@ const BlogPage = () => {
     fetchBlogs();
   }, [fetchBlogs]);
 
-  const handleImagesSelect = useCallback((files: File[]) => {
+  const handleImageSelect = useCallback((file: File) => {
     setError(null);
+    // Revoke any existing object URL to prevent memory leaks
+    if (newBlog.imagePreview && newBlog.imagePreview.startsWith("blob:")) {
+      URL.revokeObjectURL(newBlog.imagePreview);
+    }
+    
     setNewBlog((prev) => ({
       ...prev,
-      imageFiles: [...prev.imageFiles, ...files],
-      imagePreviews: [
-        ...prev.imagePreviews,
-        ...files.map((file) => URL.createObjectURL(file)),
-      ],
+      imageFile: file,
+      imagePreview: URL.createObjectURL(file),
     }));
-  }, []);
+  }, [newBlog.imagePreview]);
 
-  const handleRemoveImage = useCallback((index: number) => {
-    if (isEditing) {
-      setNewBlog((prev) => ({
-        ...prev,
-        imagePreviews: prev.imagePreviews.filter((_, i) => i !== index),
-      }));
+  const handleRemoveImage = useCallback(() => {
+    // Revoke object URL to prevent memory leaks
+    if (newBlog.imagePreview && newBlog.imagePreview.startsWith("blob:")) {
+      URL.revokeObjectURL(newBlog.imagePreview);
     }
-  }, [isEditing]);
+    
+    setNewBlog((prev) => ({
+      ...prev,
+      imageFile: null,
+      imagePreview: null,
+    }));
+  }, [newBlog.imagePreview]);
 
-  const handleRemoveNewImage = useCallback((index: number) => {
-    setNewBlog((prev) => {
-      // Revoke object URL to prevent memory leaks
-      URL.revokeObjectURL(prev.imagePreviews[prev.imageFiles.length - 1 - index]);
-      
-      return {
-        ...prev,
-        imageFiles: prev.imageFiles.filter((_, i) => i !== index),
-        imagePreviews: [
-          ...prev.imagePreviews.slice(0, prev.imagePreviews.length - prev.imageFiles.length),
-          ...prev.imageFiles
-            .filter((_, i) => i !== index)
-            .map((file) => URL.createObjectURL(file)),
-        ],
-      };
-    });
-  }, []);
-
-  // Cleanup for image preview URLs
+  // Cleanup for image preview URL
   useEffect(() => {
     return () => {
-      // Revoke all object URLs on component unmount
-      newBlog.imagePreviews.forEach((url) => {
-        if (url.startsWith("blob:")) {
-          URL.revokeObjectURL(url);
-        }
-      });
+      // Revoke object URL on component unmount
+      if (newBlog.imagePreview && newBlog.imagePreview.startsWith("blob:")) {
+        URL.revokeObjectURL(newBlog.imagePreview);
+      }
     };
-  }, [newBlog.imagePreviews]);
+  }, [newBlog.imagePreview]);
 
   const handleEdit = useCallback((blog: Blog) => {
     setNewBlog({
@@ -300,8 +240,8 @@ const BlogPage = () => {
       author: blog.author,
       categories: blog.categories,
       date: blog.date,
-      imageFiles: [],
-      imagePreviews: blog.imageUrls || [],
+      imageFile: null,
+      imagePreview: blog.imageUrl,
     });
     setCurrentBlogId(blog.id);
     setIsEditing(true);
@@ -309,19 +249,17 @@ const BlogPage = () => {
   }, []);
 
   const resetForm = useCallback(() => {
-    // Clean up any blob URLs first
-    newBlog.imagePreviews.forEach((url) => {
-      if (url.startsWith("blob:")) {
-        URL.revokeObjectURL(url);
-      }
-    });
+    // Clean up any blob URL first
+    if (newBlog.imagePreview && newBlog.imagePreview.startsWith("blob:")) {
+      URL.revokeObjectURL(newBlog.imagePreview);
+    }
     
     setIsCreating(false);
     setIsEditing(false);
     setCurrentBlogId(null);
     setNewBlog(INITIAL_BLOG_STATE);
     setError(null);
-  }, [newBlog.imagePreviews]);
+  }, [newBlog.imagePreview]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -333,13 +271,12 @@ const BlogPage = () => {
         throw new Error("Please fill in all required fields");
       }
 
-      let imageUrls = isEditing
-        ? [...newBlog.imagePreviews].filter((url) => !url.startsWith("blob:"))
-        : [];
+      let imageUrl = isEditing && newBlog.imagePreview && !newBlog.imagePreview.startsWith("blob:")
+        ? newBlog.imagePreview
+        : null;
 
-      if (newBlog.imageFiles.length > 0) {
-        const uploadedUrls = await uploadImagesToCloudinary(newBlog.imageFiles);
-        imageUrls = [...imageUrls, ...uploadedUrls];
+      if (newBlog.imageFile) {
+        imageUrl = await uploadImageToCloudinary(newBlog.imageFile);
       }
 
       const blogData = {
@@ -348,25 +285,31 @@ const BlogPage = () => {
         author: newBlog.author.trim(),
         categories: newBlog.categories.trim(),
         date: newBlog.date,
-        imageUrls,
+        imageUrl,
         createdAt: isEditing
           ? blogs.find((b) => b.id === currentBlogId)?.createdAt
           : Timestamp.now(),
       };
-
       if (isEditing && currentBlogId) {
         const response = await fetch(`/api/blog/${currentBlogId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(blogData),
         });
-        
+  
+        const responseBody = await response.text(); // Read the body once as text
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || "Failed to update blog");
+          let errorMessage = `Failed to update blog: ${response.status} ${response.statusText}`;
+          try {
+            const errorData = JSON.parse(responseBody); // Parse the text manually
+            errorMessage = errorData.error || errorMessage;
+          } catch (jsonError) {
+            // If JSON parsing fails, use the raw text
+          }
+          throw new Error(errorMessage);
         }
-        
-        const updatedBlog = await response.json();
+  
+        const updatedBlog = JSON.parse(responseBody); // Parse the text manually
         setBlogs((prev) =>
           prev.map((blog) => (blog.id === currentBlogId ? updatedBlog : blog))
         );
@@ -376,16 +319,23 @@ const BlogPage = () => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(blogData),
         });
-        
+  
+        const responseBody = await response.text(); // Read the body once as text
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || "Failed to create blog");
+          let errorMessage = `Failed to create blog: ${response.status} ${response.statusText}`;
+          try {
+            const errorData = JSON.parse(responseBody); // Parse the text manually
+            errorMessage = errorData.error || errorMessage;
+          } catch (jsonError) {
+            // If JSON parsing fails, use the raw text
+          }
+          throw new Error(errorMessage);
         }
-        
-        const newBlogData = await response.json();
+  
+        const newBlogData = JSON.parse(responseBody); // Parse the text manually
         setBlogs((prev) => [newBlogData, ...prev]);
       }
-
+  
       resetForm();
     } catch (error) {
       console.error("Error saving blog:", error);
@@ -394,22 +344,28 @@ const BlogPage = () => {
       setIsSubmitting(false);
     }
   };
-
   const deleteBlog = async () => {
     if (!deleteModalData.blogId) return;
     setIsDeleting(true);
     setError(null);
-
+  
     try {
       const response = await fetch(`/api/blog/${deleteModalData.blogId}`, {
         method: "DELETE",
       });
-      
+  
+      const responseBody = await response.text(); // Read the body once as text
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to delete blog");
+        let errorMessage = `Failed to delete blog: ${response.status} ${response.statusText}`;
+        try {
+          const errorData = JSON.parse(responseBody); // Parse the text manually
+          errorMessage = errorData.error || errorMessage;
+        } catch (jsonError) {
+          // If JSON parsing fails, use the raw text
+        }
+        throw new Error(errorMessage);
       }
-      
+  
       setBlogs((prev) =>
         prev.filter((blog) => blog.id !== deleteModalData.blogId)
       );
@@ -571,11 +527,9 @@ const BlogPage = () => {
 
                   <div className="col-span-1 md:col-span-2">
                     <ImagePicker
-                      onImagesSelect={handleImagesSelect}
-                      currentImages={isEditing ? newBlog.imagePreviews.filter(url => !url.startsWith("blob:")) : []}
+                      onImageSelect={handleImageSelect}
+                      currentImage={newBlog.imagePreview}
                       onRemoveImage={handleRemoveImage}
-                      newImages={newBlog.imageFiles}
-                      onRemoveNewImage={handleRemoveNewImage}
                       isEditing={isEditing}
                     />
                   </div>
@@ -683,20 +637,15 @@ const BlogPage = () => {
               key={blog.id}
               className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
             >
-              {blog.imageUrls?.length > 0 && (
+              {blog.imageUrl && (
                 <div className="relative h-48 w-full">
                   <Image
-                    src={blog.imageUrls[0]}
+                    src={blog.imageUrl}
                     alt={blog.title}
                     fill
                     className="object-cover"
                     sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                   />
-                  {blog.imageUrls.length > 1 && (
-                    <span className="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
-                      +{blog.imageUrls.length - 1}
-                    </span>
-                  )}
                 </div>
               )}
               <div className="p-4 space-y-3">
@@ -717,6 +666,7 @@ const BlogPage = () => {
                   <div className="flex gap-2">
                     <button
                       type="button"
+                      data-a="true"
                       onClick={() => handleEdit(blog)}
                       className="px-3 py-1.5 text-sm bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors"
                     >

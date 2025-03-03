@@ -82,7 +82,7 @@ export default function ShelterPage() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 mb-8">
         <div className="relative h-64 sm:h-80 md:h-96 w-full rounded-lg overflow-hidden shadow-md">
           <Image
-            src="/images/fen.jpg"
+            src="/images/shelterr.jpeg"
             alt="Shelter and Infrastructure Crisis in Nigeria"
             fill
             style={{ objectFit: 'cover' }}

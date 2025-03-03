@@ -1,4 +1,5 @@
 {
+  // "$schema": "./schemas/tsconfig-schema.json",
   "compilerOptions": {
     "target": "ES2017",
     "lib": ["dom", "dom.iterable", "esnext"],
@@ -23,6 +24,6 @@
     
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "app/(dashboard)/index.js", "app/lib/firebase.jsx", "app/api/blog/[blogID]/route.tsx"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "app/(dashboard)/index.js", "app/lib/firebase.jsx", "app/api/blog/[blogID]/route.tsx","quisef/declaration.d.ts"],
   "exclude": ["node_modules"]
 }

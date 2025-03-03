@@ -33,6 +33,9 @@ export default function ProjectPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [projectsPerPage] = useState<number>(6);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
 
   useEffect(() => {
     fetchProjects();
@@ -53,6 +56,24 @@ export default function ProjectPage() {
     }
   };
 
+  // Get current projects for pagination
+  const indexOfLastProject = currentPage * projectsPerPage;
+  const indexOfFirstProject = indexOfLastProject - projectsPerPage;
+  const currentProjects = projects.slice(indexOfFirstProject, indexOfLastProject);
+
+  // Change page
+  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
+
+  // Handle project selection
+  const handleProjectClick = (project: Project) => {
+    setSelectedProject(project);
+  };
+
+  // Close project details modal
+  const closeProjectDetails = () => {
+    setSelectedProject(null);
+  };
+
   return (
     <main className="bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto">
@@ -71,44 +92,95 @@ export default function ProjectPage() {
         ) : projects.length === 0 ? (
           <div className="text-center py-8 text-gray-600">No projects available at this time.</div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-            {projects.map((project) => (
-              <div
-                key={project.id}
-                className="bg-white rounded-lg shadow-md overflow-hidden transition-all duration-300 hover:shadow-lg"
-              >
-                {project.imageUrl && (
-                  <div className="relative h-48 sm:h-56 w-full">
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+              {currentProjects.map((project) => (
+                <div
+                  key={project.id}
+                  className="relative group cursor-pointer"
+                  onClick={() => handleProjectClick(project)}
+                >
+                  <div className="relative h-64 w-64 mx-auto rounded-full overflow-hidden shadow-md group-hover:shadow-lg transition-all duration-300">
                     <Image
-                      src={project.imageUrl}
+                      src={project.imageUrl || '/images/Q5blue.jpg'}
                       alt={project.name}
                       fill
                       style={{ objectFit: 'cover' }}
-                      className="transition-transform duration-500 hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-blue-800 bg-opacity-0 group-hover:bg-opacity-60 transition-all duration-300 flex items-center justify-center">
+                      <h2 className="text-white text-xl font-bold text-center px-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        {project.name}
+                      </h2>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Pagination */}
+            <div className="flex justify-center mt-8">
+              <ul className="flex space-x-2">
+                {Array.from({ length: Math.ceil(projects.length / projectsPerPage) }, (_, i) => (
+                  <li key={i}>
+                    <button
+                      onClick={() => paginate(i + 1)}
+                      className={`px-3 py-1 rounded ${
+                        currentPage === i + 1
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      {i + 1}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Project Details Modal */}
+            {selectedProject && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-screen overflow-y-auto">
+                  <div className="relative h-56 w-full">
+                    <Image
+                      src={selectedProject.imageUrl || '/images/placeholder.jpg'}
+                      alt={selectedProject.name}
+                      fill
+                      style={{ objectFit: 'cover' }}
                     />
                   </div>
-                )}
-                <div className="p-4 sm:p-6">
-                  <h2 className="text-xl sm:text-2xl font-semibold text-gray-800 mb-2">{project.name}</h2>
-                  <p className="text-gray-600 text-sm sm:text-base mb-1">
-                    <span className="font-medium">Duration:</span> {project.duration}
-                  </p>
-                  <p className="text-gray-600 text-sm sm:text-base mb-1">
-                    <span className="font-medium">Beneficiaries:</span> {project.beneficiaries}
-                  </p>
-                  <p className="text-gray-600 text-sm sm:text-base mb-1">
-                    <span className="font-medium">Location:</span> {project.location}
-                  </p>
-                  <p className="text-gray-600 text-sm sm:text-base mb-1">
-                    <span className="font-medium">activities:</span> {project.activities}
-                  </p>
-                  {project.year && (
-                    <p className="text-gray-600 text-sm sm:text-base mt-2 line-clamp-3">{project.year}</p>
-                  )}
+                  <div className="p-6">
+                    <h2 className="text-2xl font-bold text-gray-800 mb-4">{selectedProject.name}</h2>
+                    <div className="space-y-3">
+                      <p className="text-gray-700">
+                        <span className="font-semibold">Duration:</span> {selectedProject.duration}
+                      </p>
+                      <p className="text-gray-700">
+                        <span className="font-semibold">Beneficiaries:</span> {selectedProject.beneficiaries}
+                      </p>
+                      <p className="text-gray-700">
+                        <span className="font-semibold">Location:</span> {selectedProject.location}
+                      </p>
+                      <p className="text-gray-700">
+                        <span className="font-semibold">Activities:</span> {selectedProject.activities}
+                      </p>
+                      {selectedProject.year && (
+                        <p className="text-gray-700">
+                          <span className="font-semibold">Year:</span> {selectedProject.year}
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      onClick={closeProjectDetails}
+                      className="mt-6 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                    >
+                      Close
+                    </button>
+                  </div>
                 </div>
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
       </div>
     </main>

@@ -1,69 +1,87 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
-import Image from 'next/image';
-import Link from 'next/link';
-import { Metadata } from 'next';
+import { useState, useRef, useEffect } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faDownload } from '@fortawesome/free-solid-svg-icons';
 import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js';
+import dynamic from 'next/dynamic';
 
-const metadata: Metadata = {
-  title: 'Membership - QuietShelter Empowerment Foundation',
-  description: 'Join QuietShelter Empowerment Foundation as a member to support our mission of creating impactful change.',
-};
+// Dynamically import PaystackPop with ssr: false
+const PaystackPop = dynamic(
+  () => import('@paystack/inline-js'),
+  { ssr: false }
+);
 
-const PaymentModal: React.FC<{ applicationId: string; tier: string; email: string; onSuccess: () => void }> = ({
-  applicationId,
-  tier,
-  email,
-  onSuccess,
-}) => {
+// Payment Modal Component
+interface PaymentModalProps {
+  applicationId: string;
+  tier: 'student' | 'basic' | 'professional' | 'corporate';
+  email: string;
+  onSuccess: (paymentId: string) => void;
+  onCancel: () => void;
+}
+
+const PaymentModal = ({ applicationId, tier, email, onSuccess, onCancel }: PaymentModalProps) => {
   const [paymentMethod, setPaymentMethod] = useState<'paystack' | 'paypal' | null>(null);
   const [paymentError, setPaymentError] = useState<string | null>(null);
 
-  const tierPrices: { [key: string]: number } = {
-    student: 0, // Free tier
-    basic: 50000, // ₦50,000 in kobo
-    professional: 200000, // ₦200,000 in kobo
-    corporate: 500000, // ₦500,000 in kobo
+  const tierPrices = {
+    student: 0,
+    basic: 50000, // In kobo
+    professional: 200000,
+    corporate: 500000,
   };
 
-  // Paystack Integration
-  const paystackConfig = {
-    reference: `mem_${Date.now()}`,
-    email,
-    amount: tierPrices[tier],
-    publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '',
-  };
-
-  const initializePaystackPayment = usePaystackPayment(paystackConfig);
-
-  const handlePaystackPayment = () => {
-    initializePaystackPayment(
-      async (response: any) => {
-        try {
-          await updateDoc(doc(db, 'membershipApplications', applicationId), {
-            paymentStatus: 'completed',
-            paymentId: response.reference,
-            paymentMethod: 'paystack',
-          });
-          handlePaymentSuccess(response.reference);
-        } catch (error) {
-          setPaymentError('Error updating payment status with Paystack');
-          console.error('Paystack payment error:', error);
-        }
-      },
-      () => {
-        setPaymentError('Paystack payment was cancelled or failed');
+  const handlePaystackPayment = async () => {
+    // Only execute on client side
+    if (typeof window !== 'undefined') {
+      try {
+        // Dynamically import the Paystack script
+        await new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = 'https://js.paystack.co/v1/inline.js';
+          script.async = true;
+          script.onload = resolve;
+          script.onerror = reject;
+          document.head.appendChild(script);
+        });
+        
+        // Once script is loaded, initialize Paystack
+        const paystack = window.PaystackPop;
+        const handler = paystack.setup({
+          key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '',
+          email: email,
+          amount: tierPrices[tier],
+          ref: `mem_${Date.now()}`,
+          onSuccess: async (response) => {
+            try {
+              await updateDoc(doc(db, 'membershipApplications', applicationId), {
+                paymentStatus: 'completed',
+                paymentId: response.reference,
+                paymentMethod: 'paystack',
+              });
+              onSuccess(response.reference);
+            } catch (error) {
+              setPaymentError('Error updating payment status with Paystack');
+              console.error('Paystack payment error:', error);
+            }
+          },
+          onClose: () => {
+            setPaymentError('Payment was cancelled or closed.');
+            onCancel();
+          },
+        });
+        
+        handler.openIframe();
+      } catch (error) {
+        console.error('Error loading Paystack:', error);
+        setPaymentError('Failed to load payment gateway');
       }
-    );
+    }
   };
-
-  // PayPal Integration
-  const handlePaypalPayment = (data: any, actions: any) => {
+  const handlePaypalPayment = (data: Record<string, unknown>, actions: any) => {
     return actions.order.create({
       purchase_units: [
         {
@@ -76,7 +94,7 @@ const PaymentModal: React.FC<{ applicationId: string; tier: string; email: strin
     });
   };
 
-  const handlePaypalApprove = async (data: any, actions: any) => {
+  const handlePaypalApprove = async (data: Record<string, unknown>, actions: any) => {
     try {
       const details = await actions.order.capture();
       await updateDoc(doc(db, 'membershipApplications', applicationId), {
@@ -84,21 +102,23 @@ const PaymentModal: React.FC<{ applicationId: string; tier: string; email: strin
         paymentId: details.id,
         paymentMethod: 'paypal',
       });
-      handlePaymentSuccess(details.id);
+      onSuccess(details.id);
     } catch (error) {
       setPaymentError('Error updating payment status with PayPal');
       console.error('PayPal payment error:', error);
     }
   };
 
-  const handlePaymentSuccess = (paymentId: string) => {
-    onSuccess();
-  };
-
   return (
     <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 transition-opacity duration-300">
       <div className="bg-white p-6 sm:p-8 rounded-xl max-w-md w-full shadow-2xl">
         <h2 className="text-2xl font-semibold text-gray-800 mb-4 text-center">Complete Your Payment</h2>
+        <p className="text-center text-gray-600 mb-6">
+          {tier === 'basic' && 'Basic Membership: ₦50,000'}
+          {tier === 'professional' && 'Professional Membership: ₦200,000'}
+          {tier === 'corporate' && 'Corporate Membership: ₦500,000'}
+        </p>
+
         {!paymentMethod ? (
           <div className="space-y-4">
             <button
@@ -113,28 +133,50 @@ const PaymentModal: React.FC<{ applicationId: string; tier: string; email: strin
             >
               Pay with PayPal
             </button>
+            <button
+              onClick={onCancel}
+              className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-3 rounded-md transition-all duration-300 mt-2"
+            >
+              Cancel
+            </button>
           </div>
         ) : paymentMethod === 'paystack' ? (
           <>
-            <PaystackButton
-              {...paystackConfig}
-              text={`Pay ₦${tierPrices[tier] / 100}`}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-md transition-all duration-300 hover:shadow-md"
-              onSuccess={handlePaystackPayment}
-              onClose={() => setPaymentError('Payment cancelled')}
-            />
+            <div className="mb-4">
+              <button
+                onClick={handlePaystackPayment}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-md transition-all duration-300 hover:shadow-md"
+              >
+                Pay ₦{tierPrices[tier] / 100}
+              </button>
+            </div>
+            <button
+              onClick={() => setPaymentMethod(null)}
+              className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 rounded-md transition-all duration-300"
+            >
+              Back
+            </button>
             {paymentError && <p className="text-red-600 text-center mt-4">{paymentError}</p>}
           </>
         ) : (
-          <PayPalScriptProvider options={{ 'client-id': process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || '' }}>
-            <PayPalButtons
-              style={{ layout: 'vertical' }}
-              createOrder={handlePaypalPayment}
-              onApprove={handlePaypalApprove}
-              onError={() => setPaymentError('An error occurred with PayPal payment')}
-            />
+          <>
+            <PayPalScriptProvider options={{ clientId: process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || '' }}>
+              <PayPalButtons
+                style={{ layout: 'vertical' }}
+                createOrder={handlePaypalPayment}
+                onApprove={handlePaypalApprove}
+                onError={() => setPaymentError('An error occurred with PayPal payment')}
+                onCancel={() => setPaymentMethod(null)}
+              />
+            </PayPalScriptProvider>
+            <button
+              onClick={() => setPaymentMethod(null)}
+              className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 rounded-md transition-all duration-300 mt-4"
+            >
+              Back
+            </button>
             {paymentError && <p className="text-red-600 text-center mt-4">{paymentError}</p>}
-          </PayPalScriptProvider>
+          </>
         )}
       </div>
     </div>
@@ -147,29 +189,74 @@ export default function MembershipPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
   const [applicationId, setApplicationId] = useState<string | null>(null);
-  const [selectedTier, setSelectedTier] = useState<string | null>(null);
+  const [selectedTier, setSelectedTier] = useState<'student' | 'basic' | 'professional' | 'corporate' | null>(null);
   const [email, setEmail] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  interface FormData {
+    type: 'personal' | 'organization';
+    firstName?: string;
+    middleName?: string;
+    lastName?: string;
+    gender?: string;
+    email: string;
+    phone: string;
+    address: string;
+    membershipTier: string;
+    declaration: boolean;
+    paymentStatus: string;
+    submittedAt: ReturnType<typeof serverTimestamp>;
+    orgName?: string;
+    orgType?: string;
+    contactPerson?: string;
+  }
+
+  const [formData, setFormData] = useState<FormData | null>(null);
+
+  // Add Paystack script to document head using useEffect for client-side only execution
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = 'https://js.paystack.co/v1/inline.js';
+    script.async = true;
+    document.head.appendChild(script);
+    
+    return () => {
+      // Cleanup when component unmounts
+      if (document.head.contains(script)) {
+        document.head.removeChild(script);
+      }
+    };
+  }, []);
+
+  const handleDownloadPDF = () => {
+    const pdfUrl = '/pdf/membership-form.pdf';
+    const link = document.createElement('a');
+    link.href = pdfUrl;
+    link.download = 'quietshelter-membership-form.pdf';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const handleFormSwitch = (type: 'personal' | 'organization') => {
     setFormType(type);
     setResponseMessage('');
     setShowPayment(false);
     setApplicationId(null);
+    setSelectedTier(null);
+    setEmail(null);
+    if (formRef.current) formRef.current.reset();
   };
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    setResponseMessage('');
-
-    const formData = new FormData(e.currentTarget);
-    let data: any;
+  const prepareFormData = (formElement: HTMLFormElement) => {
+    const formData = new FormData(formElement);
+    let data: FormData;
 
     if (formType === 'personal') {
       data = {
         type: 'personal',
         firstName: formData.get('firstName') as string,
-        middleName: formData.get('middleName') as string,
+        middleName: formData.get('middleName') as string || '',
         lastName: formData.get('lastName') as string,
         gender: formData.get('gender') as string,
         email: formData.get('personalEmail') as string,
@@ -180,6 +267,7 @@ export default function MembershipPage() {
         paymentStatus: 'pending',
         submittedAt: serverTimestamp(),
       };
+      setEmail(data.email);
     } else {
       data = {
         type: 'organization',
@@ -194,28 +282,38 @@ export default function MembershipPage() {
         paymentStatus: 'pending',
         submittedAt: serverTimestamp(),
       };
+      setEmail(data.email);
     }
+
+    setSelectedTier(data.membershipTier as 'student' | 'basic' | 'professional' | 'corporate');
+    return data;
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setResponseMessage('');
+
+    const data = prepareFormData(e.target as HTMLFormElement);
+    setFormData(data);
 
     try {
       const docRef = await addDoc(collection(db, 'membershipApplications'), data);
-      console.log('Membership application submitted with ID:', docRef.id);
+      setApplicationId(docRef.id);
 
       if (data.membershipTier === 'student') {
-        // Free tier: complete immediately without payment
         await updateDoc(doc(db, 'membershipApplications', docRef.id), {
           paymentStatus: 'completed',
           paymentId: 'free-tier',
           paymentMethod: 'none',
         });
-        setResponseMessage('Membership application completed successfully!');
+        setResponseMessage('Student membership application completed successfully! No payment required.');
+        if (formRef.current) formRef.current.reset();
         setIsSubmitting(false);
       } else {
-        // Paid tier: trigger payment modal
-        setResponseMessage('Application saved! Please complete payment.');
-        setApplicationId(docRef.id);
-        setSelectedTier(data.membershipTier);
-        setEmail(data.email);
+        setResponseMessage('Application submitted! Please complete payment to finalize your membership.');
         setShowPayment(true);
+        setIsSubmitting(false);
       }
     } catch (error) {
       console.error('Error submitting membership application:', error);
@@ -224,61 +322,60 @@ export default function MembershipPage() {
     }
   };
 
-  const handlePaymentSuccess = () => {
-    setResponseMessage('Membership application and payment completed successfully!');
+  const handlePaymentSuccess = (paymentId: string) => {
+    setResponseMessage('Payment successful! Your membership application is now complete.');
+    setShowPayment(false);
+    setIsSubmitting(false);
+    if (formRef.current) formRef.current.reset();
+  };
+
+  const handlePaymentCancel = () => {
+    setResponseMessage('Application saved! You can complete payment later.');
     setShowPayment(false);
     setIsSubmitting(false);
   };
 
-  const handleDownloadPDF = () => {
-    const pdfUrl = '/pdf/membership-form.pdf'; // Placeholder; replace with real file in public/
-    const link = document.createElement('a');
-    link.href = pdfUrl;
-    link.download = 'membership-form.pdf';
-    link.click();
-  };
-
   return (
     <main className="container mx-auto bg-white py-12 px-6 max-w-6xl">
-      <button
-        onClick={handleDownloadPDF}
-        className="mb-8 bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-md transition-all duration-300 flex items-center"
-      >
-        <FontAwesomeIcon icon={faDownload} className="mr-2" />
-        Download Form (PDF)
-      </button>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-0 text-blue-600">Membership Application</h1>
+        <button
+          onClick={handleDownloadPDF}
+          className="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-md transition-all duration-300 flex items-center self-start"
+        >
+          <FontAwesomeIcon icon={faDownload} className="mr-2" />
+          Download Paper Form
+        </button>
+      </div>
 
-      <form id="membershipForm" onSubmit={handleSubmit} className="space-y-8">
-        <div className="form-section">
-          <h1 className="text-2xl sm:text-3xl font-bold mb-4 text-blue-600">Membership Application Form</h1>
-          <p className="text-base md:text-lg mb-6 text-gray-700">
-            Join us in creating impactful change! By becoming a member of the Quiet Shelter Foundation, you contribute to our mission of addressing critical humanitarian issues.
-          </p>
+      <p className="text-base md:text-lg mb-6 text-gray-700">
+        Join us in creating impactful change! By becoming a member of the Quiet Shelter Foundation, you contribute to our mission of addressing critical humanitarian issues.
+      </p>
 
-          {/* Form Type Selector */}
-          <div className="flex justify-center gap-4 mb-8">
-            <button
-              type="button"
-              onClick={() => handleFormSwitch('personal')}
-              className={`px-6 py-2 rounded-full font-medium text-base md:text-lg transition-all duration-300 ${
-                formType === 'personal' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-            >
-              Personal
-            </button>
-            <button
-              type="button"
-              onClick={() => handleFormSwitch('organization')}
-              className={`px-6 py-2 rounded-full font-medium text-base md:text-lg transition-all duration-300 ${
-                formType === 'organization' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-            >
-              Organization
-            </button>
-          </div>
+      <form ref={formRef} id="membershipForm" onSubmit={handleSubmit} className="space-y-8">
+        <div className="flex justify-center gap-4 mb-8">
+          <button
+            type="button"
+            onClick={() => handleFormSwitch('personal')}
+            className={`px-6 py-2 rounded-full font-medium text-base md:text-lg transition-all duration-300 ${
+              formType === 'personal' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+          >
+            Personal
+          </button>
+          <button
+            type="button"
+            onClick={() => handleFormSwitch('organization')}
+            className={`px-6 py-2 rounded-full font-medium text-base md:text-lg transition-all duration-300 ${
+              formType === 'organization' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+          >
+            Organization
+          </button>
+        </div>
 
-          {/* Personal Form Section */}
-          <div className={`${formType === 'personal' ? 'block' : 'hidden'} space-y-6`}>
+        {formType === 'personal' && (
+          <div className="space-y-6">
             <h2 className="text-xl font-semibold text-gray-800">Personal Information</h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
               <div className="space-y-2">
@@ -382,20 +479,11 @@ export default function MembershipPage() {
                 ))}
               </div>
             </div>
-
-            <div className="space-y-6">
-              <h2 className="text-xl font-semibold text-gray-800">Declaration</h2>
-              <label className="flex items-start gap-2">
-                <input type="checkbox" name="declaration" id="declaration" required className="mt-1" />
-                <span className="text-gray-700 text-sm md:text-base">
-                  I declare that all the information provided is accurate and agree to abide by the foundation's policies and guidelines.
-                </span>
-              </label>
-            </div>
           </div>
+        )}
 
-          {/* Organization Form Section */}
-          <div className={`${formType === 'organization' ? 'block' : 'hidden'} space-y-6`}>
+        {formType === 'organization' && (
+          <div className="space-y-6">
             <h2 className="text-xl font-semibold text-gray-800">Organization Information</h2>
             <div className="space-y-2">
               <label htmlFor="orgName" className="block text-gray-700 font-medium">Organization Name*</label>
@@ -493,44 +581,46 @@ export default function MembershipPage() {
                 ))}
               </div>
             </div>
-
-            <div className="space-y-6">
-              <h2 className="text-xl font-semibold text-gray-800">Declaration</h2>
-              <label className="flex items-start gap-2">
-                <input type="checkbox" name="declaration" id="declaration" required className="mt-1" />
-                <span className="text-gray-700 text-sm md:text-base">
-                  I declare that all the information provided is accurate and agree to abide by the foundation's policies and guidelines.
-                </span>
-              </label>
-            </div>
           </div>
+        )}
 
-          {!showPayment && (
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className={`w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-md transition-all duration-300 hover:shadow-md ${
-                isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
-            >
-              {isSubmitting ? 'Submitting...' : 'Submit Application'}
-            </button>
-          )}
-          {responseMessage && (
-            <p
-              className={`text-center text-sm md:text-base ${
-                responseMessage.includes('Error') ? 'text-red-600' : 'text-green-600'
-              }`}
-            >
-              {responseMessage}
-            </p>
-          )}
+        <div className="space-y-6">
+          <h2 className="text-xl font-semibold text-gray-800">Declaration</h2>
+          <label className="flex items-start gap-2">
+            <input type="checkbox" name="declaration" id="declaration" required className="mt-1" />
+            <span className="text-gray-700 text-sm md:text-base">
+              I declare that all the information provided is accurate and agree to abide by the foundation's policies and guidelines.
+            </span>
+          </label>
         </div>
+
+        {!showPayment && (
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className={`w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-md transition-all duration-300 hover:shadow-md ${
+              isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+          >
+            {isSubmitting ? 'Processing...' : 'Submit Application'}
+          </button>
+        )}
+
+        {responseMessage && (
+          <div className={`p-4 rounded-md ${responseMessage.includes('Error') ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
+            <p className="text-center">{responseMessage}</p>
+          </div>
+        )}
       </form>
 
-      {/* Payment Modal */}
       {showPayment && applicationId && selectedTier && email && (
-        <PaymentModal applicationId={applicationId} tier={selectedTier} email={email} onSuccess={handlePaymentSuccess} />
+        <PaymentModal
+          applicationId={applicationId}
+          tier={selectedTier}
+          email={email}
+          onSuccess={handlePaymentSuccess}
+          onCancel={handlePaymentCancel}
+        />
       )}
     </main>
   );

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState, useRef, FormEvent } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -13,6 +13,7 @@ const Footer: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [responseMessage, setResponseMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null); // Added ref for the form
 
   const openModal = () => setIsModalOpen(true);
   const closeModal = () => {
@@ -25,18 +26,24 @@ const Footer: React.FC = () => {
     setIsSubmitting(true);
     setResponseMessage('');
 
-    const formData = new FormData(e.currentTarget);
+    const formData = new FormData(e.currentTarget); // Safe to use synchronously
     const email = formData.get('email') as string;
 
     try {
       // Submit to Firestore 'subscribers' collection
-      const docRef = await addDoc(collection(db, 'subscribers'), {
+      const docRef = await addDoc(collection(db, 'subscriptions'), {
         email,
         subscribedAt: serverTimestamp(), // Firebase timestamp for subscription time
       });
       console.log('Subscriber added with ID:', docRef.id);
       setResponseMessage('Subscribed successfully!');
-      e.currentTarget.reset(); // Clear the form
+
+      // Use the ref to reset the form
+      if (formRef.current) {
+        formRef.current.reset();
+      } else {
+        console.error('Form ref is not attached');
+      }
     } catch (error) {
       console.error('Error subscribing:', error);
       setResponseMessage('Error subscribing. Please try again.');
@@ -235,7 +242,7 @@ const Footer: React.FC = () => {
               <h2 className="text-3xl font-bold text-gray-800">Join Our Newsletter</h2>
               <p className="text-gray-600 mt-2">Stay informed about our mission and events</p>
             </div>
-            <form onSubmit={handleSubscribe} className="space-y-6">
+            <form ref={formRef} onSubmit={handleSubscribe} className="space-y-6">
               <input
                 type="email"
                 name="email"

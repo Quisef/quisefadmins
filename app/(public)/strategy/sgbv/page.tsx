@@ -14,7 +14,7 @@ const metadata: Metadata = {
     title: 'Sexual and Gender-Based Violence (SGBV) - QuietShelter Empowerment Foundation',
     description: 'Explore QuietShelter’s holistic solutions to address Sexual and Gender-Based Violence (SGBV) in Nigeria.',
     url: 'https://your-domain.com/strategy/sgbv',
-    images: ['/images/GQQ.png'],
+    images: ['/images/SGBV.jpeg'],
   },
 };
 
@@ -82,7 +82,7 @@ export default function SGBVPage() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 mb-8">
         <div className="relative h-64 sm:h-80 md:h-96 w-full rounded-lg overflow-hidden shadow-md">
           <Image
-            src="/images/GQQ.png"
+            src="/images/SGBV.jpeg"
             alt="SGBV Crisis in Nigeria"
             fill
             style={{ objectFit: 'cover' }}

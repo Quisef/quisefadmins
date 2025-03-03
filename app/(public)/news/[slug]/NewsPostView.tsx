@@ -1,54 +1,48 @@
-// app/blog/[slug]/BlogPostView.tsx (Client Component)
+// app/blog/[slug]/NewsPostView.tsx (Client Component)
 "use client"
 
 import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Post } from './page';
+import { NewsPost } from './page';
 
 interface NewsPostViewProps {
-  post: Post;
+  post: NewsPost;
 }
 
 export default function NewsPostView({ post }: NewsPostViewProps) {
   return (
     <main className="bg-gray-50 py-12 px-6">
+      {/* Optional Header for consistency with list view */}
+      <div className="relative w-full bg-blue-600 text-white bg-cover bg-center mb-12" 
+          style={{ backgroundImage: post.imageUrl ? `url('${post.imageUrl}')` : "url('/images/box.jpg')" }}>
+        <div className="absolute inset-0 bg-black opacity-60"></div>
+        <div className="container mx-auto max-w-4xl py-20 px-6 relative z-10 text-center">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 leading-tight tracking-tight">
+            {post.title}
+          </h1>
+        </div>
+      </div>
+
       <div className="container mx-auto max-w-4xl">
         <div className="bg-white rounded-xl overflow-hidden shadow-lg">
-          {/* Hero image */}
-          {post.imageUrl && (
-            <div className="relative h-64 sm:h-96 w-full">
-              <Image
-                src={post.imageUrl}
-                alt={post.title}
-                fill
-                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 100vw, 1000px"
-                style={{ objectFit: 'cover' }}
-                priority
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = '/images/placeholder.jpg';
-                }}
-              />
-            </div>
-          )}
-
           {/* Post content */}
           <div className="p-6 sm:p-10">
             <div className="flex items-center gap-2 text-sm text-blue-600 mb-4">
-              <Link href="/News" className="hover:underline flex items-center">
+              <Link href="/news" className="hover:underline flex items-center">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                 </svg>
                 Back to blog
               </Link>
             </div>
-
-            <h1 className="text-3xl sm:text-4xl font-bold text-gray-800 mb-4">{post.title}</h1>
             
             <div className="flex flex-wrap gap-2 mb-6">
-              <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">
-                {post.categories}
-              </span>
+              {post.categories && post.categories.split(',').map((category, index) => (
+                <span key={index} className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">
+                  {category.trim()}
+                </span>
+              ))}
             </div>
             
             <div className="flex items-center mb-8">
@@ -83,7 +77,7 @@ export default function NewsPostView({ post }: NewsPostViewProps) {
         {/* Back button */}
         <div className="mt-8 text-center">
           <Link 
-            href="/News" 
+            href="/news" 
             className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-md transition-all duration-300 hover:shadow-md"
           >
             Back to Blog

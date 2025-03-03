@@ -22,7 +22,7 @@ const slides = [
     linkText: 'Our Story',
   },
   {
-    image: '/images/wtt.png',
+    image: '/images/youth_empowerment_africa.jpeg',
     title: 'We Empower',
     span: 'The Youths',
     link: '/blog',

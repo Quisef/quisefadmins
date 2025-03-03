@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import { Sidebar } from "@/components/Sidebar"
 import { TopNav } from "@/components/TopNav"
+import { AuthProvider } from '@/context/AuthContext';
+
 
 export default function DashboardLayout({
   children,
@@ -13,7 +15,7 @@ export default function DashboardLayout({
       <div className="flex">
         <Sidebar />
         <main className="flex-1 p-6">
-          {children}
+        <AuthProvider>{children}</AuthProvider>
         </main>
       </div>
     </div>

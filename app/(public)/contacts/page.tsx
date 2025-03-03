@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState, useRef, FormEvent } from 'react';
 import { Metadata } from 'next';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -19,13 +19,14 @@ const metadata: Metadata = {
 export default function ContactPage() {
   const [responseMessage, setResponseMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null); // Added ref for the form
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
     setResponseMessage('');
 
-    const formData = new FormData(e.currentTarget);
+    const formData = new FormData(e.currentTarget); // Safe to use synchronously
     const data = {
       name: formData.get('name') as string,
       email: formData.get('email') as string,
@@ -38,7 +39,13 @@ export default function ContactPage() {
       const docRef = await addDoc(collection(db, 'contacts'), data);
       console.log('Contact form submitted with ID:', docRef.id);
       setResponseMessage('Message sent successfully!');
-      e.currentTarget.reset(); // Clear the form
+
+      // Use the ref to reset the form
+      if (formRef.current) {
+        formRef.current.reset();
+      } else {
+        console.error('Form ref is not attached');
+      }
     } catch (error) {
       console.error('Error submitting contact form:', error);
       setResponseMessage('Error sending message. Please try again.');
@@ -73,7 +80,7 @@ export default function ContactPage() {
           {/* Contact Form */}
           <div className="w-full lg:w-1/2 bg-white p-6 md:p-8 rounded-xl shadow-md hover:shadow-xl transition-shadow duration-300">
             <h2 className="text-2xl sm:text-3xl font-semibold text-gray-800 mb-6 text-center">Get in Touch</h2>
-            <form id="contactForm" onSubmit={handleSubmit} className="space-y-6">
+            <form id="contactForm" ref={formRef} onSubmit={handleSubmit} className="space-y-6">
               <div>
                 <input
                   type="text"

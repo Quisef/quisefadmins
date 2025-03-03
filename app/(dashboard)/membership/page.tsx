@@ -7,10 +7,10 @@ import { collection, getDocs, query, where } from "firebase/firestore";
 interface Member {
   id: string;
   type: "personal" | "organization";
-  name?: string; // For personal members
-  organizationName?: string; // For organizational members
+  name?: string; // For personal members (combines firstName, middleName, lastName)
+  organizationName?: string; // For organizational members (maps to orgName)
   gender?: string; // For personal members only
-  amountPaid: number;
+  amountPaid: number; // Calculated based on membershipTier
 }
 
 export default function MembershipPage() {
@@ -22,16 +22,39 @@ export default function MembershipPage() {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const membersPerPage = 5; // Number of members per page
 
+  // Define membership tier prices (in NGN)
+  const tierPrices: { [key: string]: number } = {
+    student: 0,
+    basic: 50000, // Amount in NGN (not kobo, for display purposes)
+    professional: 200000,
+    corporate: 500000,
+  };
+
   const fetchMembers = async (type: "personal" | "organization") => {
     setLoading(true);
     setError(null);
     try {
-      const q = query(collection(db, "memberships"), where("type", "==", type));
+      const q = query(collection(db, "membershipApplications"), where("type", "==", type));
       const querySnapshot = await getDocs(q);
-      const membersData = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Member[];
+      const membersData = querySnapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          type: data.type as "personal" | "organization",
+          // For personal: combine firstName, middleName, lastName into name
+          name:
+            data.type === "personal"
+              ? `${data.firstName || ""} ${data.middleName || ""} ${data.lastName || ""}`.trim()
+              : undefined,
+          // For organization: map orgName to organizationName
+          organizationName: data.type === "organization" ? data.orgName : undefined,
+          gender: data.type === "personal" ? data.gender : undefined,
+          // Map membershipTier to amountPaid; default to 0 if not completed
+          amountPaid: data.paymentStatus === "completed" && data.membershipTier in tierPrices
+            ? tierPrices[data.membershipTier]
+            : 0,
+        } as Member;
+      });
       setMembers(membersData);
     } catch (err) {
       setError("Failed to fetch members");
@@ -41,11 +64,16 @@ export default function MembershipPage() {
     }
   };
 
+  useEffect(() => {
+    if (selectedType) {
+      fetchMembers(selectedType);
+    }
+  }, [selectedType]);
+
   const handleMembershipClick = (type: "personal" | "organization") => {
     setSelectedType(type);
     setCurrentPage(1); // Reset to first page when changing type
     setSearchTerm(""); // Clear search when changing type
-    fetchMembers(type);
   };
 
   const handleSearch = (e: ChangeEvent<HTMLInputElement>) => {
@@ -58,7 +86,7 @@ export default function MembershipPage() {
     const searchValue = searchTerm.toLowerCase();
     const nameToSearch =
       member.type === "personal" ? member.name?.toLowerCase() : member.organizationName?.toLowerCase();
-    return nameToSearch?.includes(searchValue);
+    return nameToSearch?.includes(searchValue) || false;
   });
 
   // Pagination logic
@@ -108,7 +136,7 @@ export default function MembershipPage() {
               placeholder={`Search by ${selectedType === "personal" ? "name" : "organization name"}...`}
               value={searchTerm}
               onChange={handleSearch}
-              className="w-full max-w-md border rounded px-3 py-2"
+              className="w-full max-w-md border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
         )}
@@ -151,7 +179,7 @@ export default function MembershipPage() {
                         {selectedType === "personal" && (
                           <td className="py-3 px-4">{member.gender || "N/A"}</td>
                         )}
-                        <td className="py-3 px-4">${member.amountPaid.toFixed(2)}</td>
+                        <td className="py-3 px-4">₦{member.amountPaid.toLocaleString()}</td>
                       </tr>
                     ))
                   ) : (

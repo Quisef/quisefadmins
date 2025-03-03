@@ -14,7 +14,7 @@ const metadata: Metadata = {
     title: 'STEM and Digital Education - QuietShelter Empowerment Foundation',
     description: 'Discover QuietShelter’s sustainable solutions to enhance STEM and digital education in Nigeria.',
     url: 'https://your-domain.com/strategy/education',
-    images: ['/images/education.png'],
+    images: ['/images/edu.jpeg'],
   },
 };
 
@@ -82,7 +82,7 @@ export default function EducationPage() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 mb-8">
         <div className="relative h-64 sm:h-80 md:h-96 w-full rounded-lg overflow-hidden shadow-md">
           <Image
-            src="/images/education.png"
+            src="/images/edu.jpeg"
             alt="STEM Education in Nigeria"
             fill
             style={{ objectFit: 'cover' }}

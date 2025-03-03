@@ -56,16 +56,14 @@ export default function AboutPage() {
               The Quiet Shelter Empowerment Foundation is a registered not-for-profit organization established in August 2020 in Jimeta, Yola, Adamawa State, Nigeria. Our primary purpose is to provide humanitarian services to communities, aiming to bring about positive changes and developments.
             </p>
           </div>
-          <div className="lg:w-1/2">
-            <div className="relative h-64 sm:h-80 lg:h-96 w-full rounded-xl overflow-hidden shadow-lg animate-fadeInUp">
-              <Image
-                src="/images/cham.jpg"
-                alt="About QuietShelter"
-                fill
-                style={{ objectFit: 'cover' }}
-                className="transition-transform duration-500 hover:scale-105"
-              />
-            </div>
+          <div className="relative h-84 sm:h-80 lg:h-96 w-full rounded-[90px_10px_10px_10px] overflow-hidden ">
+            <Image
+              src="/images/Cham.jpg"
+              alt="Executive Director Speech"
+              fill
+              style={{ objectFit: 'cover' }}
+              className="absolute inset-0 w-full h-full object-fit object-center transition-transform duration-500 hover:scale-105"
+            />
           </div>
         </div>
       </section>
