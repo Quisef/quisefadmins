@@ -13,7 +13,7 @@ export const Sidebar = () => {
     { href: '/subscribers', label: 'Subscribers', icon: '📮' },
     { href: '/analytics', label: 'Analytics', icon: '📊' },
     { href: '/settings', label: 'Settings', icon: '⚙️' },
-    { href: 'http://localhost:3000/home', label: 'Website', icon: '🏠' },
+    { href: 'https://quisefadmin.vercel.app/home', label: 'Website', icon: '🌍' },
   ];
 
   return (
