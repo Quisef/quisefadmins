@@ -3,7 +3,15 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: 'QUISEF CMS',
   description: 'Content Management System',
-}
+  icons: {
+    icon: {
+      url: '/images/logo2.jpg', // Path relative to public
+      sizes: '128x128',         // Specify size (e.g., 32x32 pixels)
+      type: 'image/jpg',      // MIME type
+    },
+  },
+};
+
 
 export default function RootLayout({
   children,
