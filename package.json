@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build",
+    "build": "next build && npx @cloudflare/next-on-pages",
     "start": "next start",
     "lint": "next lint",
     "pages:build": "npx @cloudflare/next-on-pages",
@@ -27,16 +27,18 @@
     "bcrypt": "^5.1.1",
     "bcryptjs": "^2.4.3",
     "cloudinary": "^2.5.1",
+    "crypto-browserify": "^3.12.1",
     "firebase": "^11.2.0",
     "firebase-admin": "^13.1.0",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.471.0",
-    "next": "^15.2.0",
+    "next": "^15.2.1",
     "next-cloudinary": "^6.16.0",
     "paystack": "^2.0.1",
     "paystack-inline-ts": "^1.0.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "stream-browserify": "^3.0.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {
