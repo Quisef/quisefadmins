@@ -29,5 +29,5 @@ export function middleware(request: NextRequest) {
 
 // Apply middleware to all routes except the specified public paths
 export const config = {
-  matcher: ['/dashboard/:path*'], // Adjust based on your needs
+  matcher: ['/home/:path*'], // Adjust based on your needs
 };
