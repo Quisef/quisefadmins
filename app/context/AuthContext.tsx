@@ -47,9 +47,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null); // Reset user to null after signing out
   };
 
-  if (loading) {
-    return <div>Loading...</div>; // Show a loading indicator while initializing
-  }
+ 
 
   return (
     <AuthContext.Provider value={{ user, signIn, signOut }}>

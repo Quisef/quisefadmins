@@ -4,7 +4,7 @@ import { TopNav } from "@/components/TopNav"
 import { AuthProvider } from '@/context/AuthContext';
 
 
-export default function DashboardLayout({
+export default function Dashboard({
   children,
 }: {
   children: React.ReactNode
