@@ -141,7 +141,7 @@ const Footer: React.FC = () => {
                 { href: '/members', label: 'Membership' },
                 { href: '/projects', label: 'Project' },
                 { href: '/faq', label: 'FAQ' },
-                { href: 'https://quisefadmin.vercel.app/login', label: 'Admin Portal', external: true },
+                { href: 'https://www.quietshelterfoundation.com/login', label: 'Admin Portal', external: true },
               ].map((link) => (
                 <li key={link.href}>
                   {link.external ? (
