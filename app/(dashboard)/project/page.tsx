@@ -137,19 +137,27 @@ export default function ProjectPage() {
 
   const handleImageSelect = (files: File[]) => {
     const validFiles = files.filter(file => file.size <= MAX_IMAGE_SIZE);
-    if (imageFiles.length + validFiles.length > MAX_IMAGES) {
-      alert(`You can only upload up to ${MAX_IMAGES} images.`);
+    const totalImages = (formData.imageUrls?.length || 0) + imageFiles.length + validFiles.length;
+    if (totalImages > MAX_IMAGES) {
+      alert(`You can only upload up to ${MAX_IMAGES} images total.`);
       return;
     }
     if (validFiles.length < files.length) {
       alert('Some files exceed the 5MB size limit and were not added.');
     }
-    setImageFiles(prev => [...prev, ...validFiles].slice(0, MAX_IMAGES));
+    setImageFiles(prev => [...prev, ...validFiles].slice(0, MAX_IMAGES - (formData.imageUrls?.length || 0)));
   };
 
-  const handleImageRemove = (index: number) => {
-    setImageFiles(prev => prev.filter((_, i) => i !== index));
-    setPreviewUrls(prev => prev.filter((_, i) => i !== index));
+  const handleImageRemove = (index: number, isExisting: boolean = false) => {
+    if (isExisting) {
+      setFormData(prev => ({
+        ...prev,
+        imageUrls: prev.imageUrls?.filter((_, i) => i !== index) || []
+      }));
+    } else {
+      setImageFiles(prev => prev.filter((_, i) => i !== index));
+      setPreviewUrls(prev => prev.filter((_, i) => i !== index));
+    }
   };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
@@ -231,9 +239,9 @@ export default function ProjectPage() {
       year: project.year || '',
       imageUrls: project.imageUrls || [],
     });
-    setIsModalOpen(true);
     setImageFiles([]);
     setPreviewUrls([]);
+    setIsModalOpen(true);
   };
 
   const resetForm = (): void => {
@@ -258,11 +266,12 @@ export default function ProjectPage() {
     onImageSelect: (files: File[]) => void;
     currentImages: string[];
     previewUrls: string[];
-    onRemoveImage: (index: number) => void;
+    onRemoveImage: (index: number, isExisting: boolean) => void;
   }
 
   const ImagePicker = ({ onImageSelect, currentImages, previewUrls, onRemoveImage }: ImagePickerProps) => {
     const [isDragging, setIsDragging] = useState(false);
+    const totalImages = currentImages.length + previewUrls.length;
 
     const handleDrag = (e: DragEvent<HTMLDivElement>) => {
       e.preventDefault();
@@ -277,16 +286,25 @@ export default function ProjectPage() {
       if (files.length) onImageSelect(files);
     };
 
-    const allImages = [...currentImages, ...previewUrls];
-
     return (
       <div>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4">
-          {allImages.map((url, index) => (
-            <div key={index} className="relative w-full h-32 rounded overflow-hidden border-2 border-gray-200">
-              <img src={url} alt={`Image ${index + 1}`} className="w-full h-full object-cover" />
+          {currentImages.map((url, index) => (
+            <div key={`existing-${index}`} className="relative w-full h-32 rounded overflow-hidden border-2 border-gray-200">
+              <img src={url} alt={`Existing Image ${index + 1}`} className="w-full h-full object-cover" />
               <button
-                onClick={() => onRemoveImage(index)}
+                onClick={() => onRemoveImage(index, true)}
+                className="absolute top-1 right-1 p-1 bg-red-500 rounded-full text-white hover:bg-red-600"
+              >
+                X
+              </button>
+            </div>
+          ))}
+          {previewUrls.map((url, index) => (
+            <div key={`preview-${index}`} className="relative w-full h-32 rounded overflow-hidden border-2 border-gray-200">
+              <img src={url} alt={`Preview Image ${index + 1}`} className="w-full h-full object-cover" />
+              <button
+                onClick={() => onRemoveImage(index, false)}
                 className="absolute top-1 right-1 p-1 bg-red-500 rounded-full text-white hover:bg-red-600"
               >
                 X
@@ -294,7 +312,7 @@ export default function ProjectPage() {
             </div>
           ))}
         </div>
-        {allImages.length < MAX_IMAGES && (
+        {totalImages < MAX_IMAGES && (
           <div
             onDragEnter={() => setIsDragging(true)}
             onDragLeave={() => setIsDragging(false)}
@@ -321,7 +339,7 @@ export default function ProjectPage() {
           </div>
         )}
         <p className="text-sm text-gray-500 mt-2">
-          {allImages.length}/{MAX_IMAGES} images uploaded
+          {totalImages}/{MAX_IMAGES} images uploaded
         </p>
       </div>
     );
@@ -433,11 +451,7 @@ export default function ProjectPage() {
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                         {selectedProject.imageUrls.map((url, index) => (
                           <div key={index} className="w-full h-32 rounded-lg overflow-hidden">
-                            <img 
-                              src={url} 
-                              alt={`${selectedProject.name} ${index + 1}`} 
-                              className="w-full h-full object-cover" 
-                            />
+                            <img src={url} alt={`${selectedProject.name} ${index + 1}`} className="w-full h-full object-cover" />
                           </div>
                         ))}
                       </div>
