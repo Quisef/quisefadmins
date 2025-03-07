@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/firebase";
 import { signInWithEmailAndPassword, AuthError } from "firebase/auth";
 import { z } from "zod";
-export const runtime = 'edge';
 // Define validation schema
 const loginSchema = z.object({
     email: z.string().email("Invalid email format"),

@@ -7,6 +7,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faDownload, faEdit, faTrash, faInfoCircle } from '@fortawesome/free-solid-svg-icons';
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_IMAGES = 5;
 
 export interface Project {
   id?: string;
@@ -16,7 +17,7 @@ export interface Project {
   location: string;
   activities: string;
   year?: string;
-  imageUrl?: string;
+  imageUrls?: string[];
   createdAt?: string;
   updatedAt?: string;
 }
@@ -65,7 +66,7 @@ export default function ProjectPage() {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [showDetails, setShowDetails] = useState<boolean>(false);
-  const projectsPerPage = 8; // Increased for better grid layout
+  const projectsPerPage = 8;
 
   type FormData = Omit<Project, 'id' | 'createdAt' | 'updatedAt'>;
   const initialFormData: FormData = {
@@ -75,25 +76,22 @@ export default function ProjectPage() {
     location: '',
     activities: '',
     year: '',
-    imageUrl: '',
+    imageUrls: [],
   };
 
   const [formData, setFormData] = useState<FormData>(initialFormData);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
 
   useEffect(() => {
     fetchProjects();
   }, []);
 
-  // Create preview URL for the selected image file
   useEffect(() => {
-    if (imageFile) {
-      const url = URL.createObjectURL(imageFile);
-      setPreviewUrl(url);
-      return () => URL.revokeObjectURL(url);
-    }
-  }, [imageFile]);
+    const newPreviewUrls = imageFiles.map(file => URL.createObjectURL(file));
+    setPreviewUrls(newPreviewUrls);
+    return () => newPreviewUrls.forEach(url => URL.revokeObjectURL(url));
+  }, [imageFiles]);
 
   const fetchProjects = async (): Promise<void> => {
     try {
@@ -101,6 +99,7 @@ export default function ProjectPage() {
       const projectsData = querySnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
+        imageUrls: doc.data().imageUrls || (doc.data().imageUrl ? [doc.data().imageUrl] : []),
       })) as Project[];
       setProjects(projectsData);
       setLoading(false);
@@ -111,7 +110,6 @@ export default function ProjectPage() {
     }
   };
 
-  // Filter and paginate projects
   const filteredProjects = projects.filter((project) =>
     project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     project.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -137,18 +135,21 @@ export default function ProjectPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleImageSelect = (file: File) => {
-    if (file.size > MAX_IMAGE_SIZE) {
-      alert('File size exceeds 5MB limit.');
+  const handleImageSelect = (files: File[]) => {
+    const validFiles = files.filter(file => file.size <= MAX_IMAGE_SIZE);
+    if (imageFiles.length + validFiles.length > MAX_IMAGES) {
+      alert(`You can only upload up to ${MAX_IMAGES} images.`);
       return;
     }
-    setImageFile(file);
+    if (validFiles.length < files.length) {
+      alert('Some files exceed the 5MB size limit and were not added.');
+    }
+    setImageFiles(prev => [...prev, ...validFiles].slice(0, MAX_IMAGES));
   };
 
-  const handleImageRemove = () => {
-    setImageFile(null);
-    setPreviewUrl(null);
-    setFormData((prev) => ({ ...prev, imageUrl: '' }));
+  const handleImageRemove = (index: number) => {
+    setImageFiles(prev => prev.filter((_, i) => i !== index));
+    setPreviewUrls(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
@@ -157,22 +158,24 @@ export default function ProjectPage() {
     setError(null);
 
     try {
-      let imageUrl = formData.imageUrl || '';
-
-      if (imageFile) {
+      let imageUrls = formData.imageUrls || [];
+      
+      if (imageFiles.length > 0) {
         setUploadProgress(0);
-        imageUrl = await uploadImageToCloudinary(imageFile);
-        setUploadProgress(100);
+        const uploadPromises = imageFiles.map(async (file, index) => {
+          const url = await uploadImageToCloudinary(file);
+          setUploadProgress(((index + 1) / imageFiles.length) * 100);
+          return url;
+        });
+        const newImageUrls = await Promise.all(uploadPromises);
+        imageUrls = [...imageUrls, ...newImageUrls];
       }
 
       const projectData: Partial<Project> = {
         ...formData,
+        imageUrls,
         updatedAt: new Date().toISOString(),
       };
-      
-      if (imageUrl) {
-        projectData.imageUrl = imageUrl;
-      }
 
       if (currentProject?.id) {
         await updateDoc(doc(db, 'projects', currentProject.id), projectData);
@@ -226,16 +229,18 @@ export default function ProjectPage() {
       location: project.location,
       activities: project.activities,
       year: project.year || '',
-      imageUrl: project.imageUrl || '',
+      imageUrls: project.imageUrls || [],
     });
     setIsModalOpen(true);
+    setImageFiles([]);
+    setPreviewUrls([]);
   };
 
   const resetForm = (): void => {
     setFormData(initialFormData);
     setCurrentProject(null);
-    setImageFile(null);
-    setPreviewUrl(null);
+    setImageFiles([]);
+    setPreviewUrls([]);
     setUploadProgress(0);
   };
 
@@ -250,13 +255,13 @@ export default function ProjectPage() {
   };
 
   interface ImagePickerProps {
-    onImageSelect: (file: File) => void;
-    currentImage: string | null;
-    previewUrl: string | null;
-    onRemoveImage: () => void;
+    onImageSelect: (files: File[]) => void;
+    currentImages: string[];
+    previewUrls: string[];
+    onRemoveImage: (index: number) => void;
   }
 
-  const ImagePicker = ({ onImageSelect, currentImage, previewUrl, onRemoveImage }: ImagePickerProps) => {
+  const ImagePicker = ({ onImageSelect, currentImages, previewUrls, onRemoveImage }: ImagePickerProps) => {
     const [isDragging, setIsDragging] = useState(false);
 
     const handleDrag = (e: DragEvent<HTMLDivElement>) => {
@@ -268,45 +273,56 @@ export default function ProjectPage() {
       e.preventDefault();
       e.stopPropagation();
       setIsDragging(false);
-      const files = e.dataTransfer.files;
-      if (files?.[0]) onImageSelect(files[0]);
+      const files = Array.from(e.dataTransfer.files);
+      if (files.length) onImageSelect(files);
     };
 
-    const displayImage = previewUrl || currentImage;
+    const allImages = [...currentImages, ...previewUrls];
 
     return (
       <div>
-        {displayImage ? (
-          <div className="relative w-full h-40 rounded-full overflow-hidden border-2 border-gray-200 mx-auto max-w-xs">
-            <img src={displayImage} alt="Preview" className="w-full h-full object-cover" />
-            <button
-              onClick={onRemoveImage}
-              className="absolute top-2 right-2 p-1 bg-red-500 rounded-full text-white hover:bg-red-600"
-            >
-              X
-            </button>
-          </div>
-        ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4">
+          {allImages.map((url, index) => (
+            <div key={index} className="relative w-full h-32 rounded overflow-hidden border-2 border-gray-200">
+              <img src={url} alt={`Image ${index + 1}`} className="w-full h-full object-cover" />
+              <button
+                onClick={() => onRemoveImage(index)}
+                className="absolute top-1 right-1 p-1 bg-red-500 rounded-full text-white hover:bg-red-600"
+              >
+                X
+              </button>
+            </div>
+          ))}
+        </div>
+        {allImages.length < MAX_IMAGES && (
           <div
             onDragEnter={() => setIsDragging(true)}
             onDragLeave={() => setIsDragging(false)}
             onDragOver={handleDrag}
             onDrop={handleDrop}
-            className={`border-2 border-dashed rounded-full p-4 text-center h-40 w-40 flex flex-col items-center justify-center mx-auto ${isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}`}
+            className={`border-2 border-dashed rounded p-4 text-center flex flex-col items-center justify-center ${
+              isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
+            }`}
           >
             <input
               type="file"
               accept="image/*"
-              onChange={(e) => e.target.files?.[0] && onImageSelect(e.target.files[0])}
+              multiple
+              onChange={(e) => e.target.files && onImageSelect(Array.from(e.target.files))}
               className="hidden"
               id="imageUpload"
             />
             <label htmlFor="imageUpload" className="cursor-pointer">
-              <p className="text-gray-600 text-sm">{isDragging ? 'Drop image here' : 'Drag & drop'}</p>
+              <p className="text-gray-600 text-sm">
+                {isDragging ? 'Drop images here' : `Drag & drop (Max ${MAX_IMAGES} images)`}
+              </p>
               <span className="text-blue-600 hover:underline text-sm">Browse</span>
             </label>
           </div>
         )}
+        <p className="text-sm text-gray-500 mt-2">
+          {allImages.length}/{MAX_IMAGES} images uploaded
+        </p>
       </div>
     );
   };
@@ -327,7 +343,6 @@ export default function ProjectPage() {
           </button>
         </div>
 
-        {/* Search Bar */}
         <div className="mb-6">
           <input
             type="text"
@@ -346,19 +361,17 @@ export default function ProjectPage() {
           <div className="text-center py-8">Loading...</div>
         ) : (
           <>
-            {/* Project Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {currentProjects.length > 0 ? (
                 currentProjects.map((project) => (
                   <div key={project.id} className="relative">
-                    {/* Circular image preview */}
                     <div 
                       className="w-40 h-40 mx-auto rounded-full overflow-hidden border-4 border-gray-200 hover:border-blue-500 transition-all duration-300 cursor-pointer shadow-lg"
                       onClick={() => toggleProjectDetails(project)}
                     >
-                      {project.imageUrl ? (
+                      {project.imageUrls?.[0] ? (
                         <img
-                          src={project.imageUrl}
+                          src={project.imageUrls[0]}
                           alt={project.name}
                           className="w-full h-full object-cover"
                         />
@@ -367,12 +380,11 @@ export default function ProjectPage() {
                           No Image
                         </div>
                       )}
-                      <div className="absolute inset-0 flex items-center justify-center  bg-opacity-50 opacity-0 hover:opacity-100 rounded-full transition-opacity duration-300">
+                      <div className="absolute inset-0 flex items-center justify-center bg-opacity-50 opacity-0 hover:opacity-100 rounded-full transition-opacity duration-300">
                         <p className="text-white font-semibold text-center px-2">{project.name}</p>
                       </div>
                     </div>
                     
-                    {/* Action buttons below circle */}
                     <div className="flex justify-center mt-3 gap-2">
                       <button
                         onClick={() => openEditModal(project)}
@@ -403,7 +415,6 @@ export default function ProjectPage() {
               )}
             </div>
 
-            {/* Project Details Modal */}
             {showDetails && selectedProject && (
               <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 sm:p-6 z-40">
                 <div className="bg-white rounded-lg max-w-2xl w-full p-6 sm:p-8 shadow-xl">
@@ -417,43 +428,43 @@ export default function ProjectPage() {
                     </button>
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {selectedProject.imageUrl && (
-                      <div className="md:col-span-1">
-                        <div className="w-full h-48 rounded-lg overflow-hidden">
-                          <img
-                            src={selectedProject.imageUrl}
-                            alt={selectedProject.name}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
+                  <div className="space-y-6">
+                    {selectedProject.imageUrls && selectedProject.imageUrls.length > 0 && (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                        {selectedProject.imageUrls.map((url, index) => (
+                          <div key={index} className="w-full h-32 rounded-lg overflow-hidden">
+                            <img 
+                              src={url} 
+                              alt={`${selectedProject.name} ${index + 1}`} 
+                              className="w-full h-full object-cover" 
+                            />
+                          </div>
+                        ))}
                       </div>
                     )}
                     
-                    <div className={selectedProject.imageUrl ? "md:col-span-2" : "md:col-span-3"}>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-sm text-gray-500">Year</p>
-                          <p className="font-medium">{selectedProject.year || "N/A"}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-500">Duration</p>
-                          <p className="font-medium">{selectedProject.duration}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-500">Location</p>
-                          <p className="font-medium">{selectedProject.location}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-500">Beneficiaries</p>
-                          <p className="font-medium">{selectedProject.beneficiaries}</p>
-                        </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-500">Year</p>
+                        <p className="font-medium">{selectedProject.year || "N/A"}</p>
                       </div>
-                      
-                      <div className="mt-4">
-                        <p className="text-sm text-gray-500">Activities</p>
-                        <p className="font-medium">{selectedProject.activities}</p>
+                      <div>
+                        <p className="text-sm text-gray-500">Duration</p>
+                        <p className="font-medium">{selectedProject.duration}</p>
                       </div>
+                      <div>
+                        <p className="text-sm text-gray-500">Location</p>
+                        <p className="font-medium">{selectedProject.location}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">Beneficiaries</p>
+                        <p className="font-medium">{selectedProject.beneficiaries}</p>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <p className="text-sm text-gray-500">Activities</p>
+                      <p className="font-medium">{selectedProject.activities}</p>
                     </div>
                   </div>
                   
@@ -478,7 +489,6 @@ export default function ProjectPage() {
               </div>
             )}
 
-            {/* Pagination Controls */}
             {totalPages > 1 && (
               <div className="mt-8 flex justify-center items-center gap-2 flex-wrap">
                 <button
@@ -496,7 +506,6 @@ export default function ProjectPage() {
                   Previous
                 </button>
                 
-                {/* Show limited page numbers with ellipsis */}
                 {Array.from({ length: totalPages }, (_, i) => i + 1)
                   .filter(pageNum => 
                     pageNum === 1 || 
@@ -536,7 +545,6 @@ export default function ProjectPage() {
               </div>
             )}
 
-            {/* Results Counter */}
             <div className="mt-4 text-center text-gray-600">
               Showing {indexOfFirstProject + 1} - {Math.min(indexOfLastProject, filteredProjects.length)} of{' '}
               {filteredProjects.length} projects
@@ -544,7 +552,6 @@ export default function ProjectPage() {
           </>
         )}
 
-        {/* Project Form Modal */}
         {isModalOpen && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 sm:p-6 z-50 overflow-y-auto">
             <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 sm:p-8 shadow-xl">
@@ -628,12 +635,12 @@ export default function ProjectPage() {
                   
                   <div>
                     <label className="block text-sm font-medium mb-1 text-gray-700">
-                      Project Image <span className="text-gray-500">(Optional)</span>
+                      Project Images <span className="text-gray-500">(Up to {MAX_IMAGES})</span>
                     </label>
                     <ImagePicker
                       onImageSelect={handleImageSelect}
-                      currentImage={formData.imageUrl || null}
-                      previewUrl={previewUrl}
+                      currentImages={formData.imageUrls || []}
+                      previewUrls={previewUrls}
                       onRemoveImage={handleImageRemove}
                     />
                     {uploadProgress > 0 && uploadProgress < 100 && (
@@ -672,7 +679,6 @@ export default function ProjectPage() {
           </div>
         )}
         
-        {/* Delete Confirmation Modal */}
         {isDeleteModalOpen && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 sm:p-6 z-50">
             <div className="bg-white rounded-lg max-w-md w-full p-6 shadow-xl">

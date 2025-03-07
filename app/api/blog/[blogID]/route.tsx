@@ -6,7 +6,6 @@ import { v2 as cloudinary } from "cloudinary";
 import { initializeApp, getApps } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 
-export const runtime = 'edge';
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
