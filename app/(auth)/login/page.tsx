@@ -18,7 +18,7 @@ export default function LoginPage() {
   
     try {
       await signIn(email, password);
-      router.push("/");
+      router.push("/dashboard");
     } catch (error: any) {
       const errorCode = error.code;
       switch(errorCode) {
