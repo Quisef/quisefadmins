@@ -53,7 +53,8 @@ const Header: React.FC = () => {
               { href: '/about', label: 'Our Story' },
               { href: '/donation', label: 'Donation' },
               { href: '/news', label: 'Blog' },
-              { href: '/annualreport', label: 'Annual Report' },
+              { href: '/projects', label: 'Projects' },
+              
             ].map((item) => (
               <li key={item.href}>
                 <Link

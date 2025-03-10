@@ -1,4 +1,3 @@
-//app/(dashboard)/bloge/page.tsx
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
@@ -110,7 +109,6 @@ const ImagePicker = ({
         Blog Image (max 5MB)
       </label>
 
-      {/* Existing or New Image */}
       {currentImage && (
         <div className="relative w-40 h-40">
           <img
@@ -129,7 +127,6 @@ const ImagePicker = ({
         </div>
       )}
 
-      {/* File Input */}
       {!currentImage && (
         <div className="relative border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:border-blue-400">
           <input
@@ -198,7 +195,6 @@ const BlogPage = () => {
 
   const handleImageSelect = useCallback((file: File) => {
     setError(null);
-    // Revoke any existing object URL to prevent memory leaks
     if (newBlog.imagePreview && newBlog.imagePreview.startsWith("blob:")) {
       URL.revokeObjectURL(newBlog.imagePreview);
     }
@@ -211,7 +207,6 @@ const BlogPage = () => {
   }, [newBlog.imagePreview]);
 
   const handleRemoveImage = useCallback(() => {
-    // Revoke object URL to prevent memory leaks
     if (newBlog.imagePreview && newBlog.imagePreview.startsWith("blob:")) {
       URL.revokeObjectURL(newBlog.imagePreview);
     }
@@ -223,10 +218,8 @@ const BlogPage = () => {
     }));
   }, [newBlog.imagePreview]);
 
-  // Cleanup for image preview URL
   useEffect(() => {
     return () => {
-      // Revoke object URL on component unmount
       if (newBlog.imagePreview && newBlog.imagePreview.startsWith("blob:")) {
         URL.revokeObjectURL(newBlog.imagePreview);
       }
@@ -249,7 +242,6 @@ const BlogPage = () => {
   }, []);
 
   const resetForm = useCallback(() => {
-    // Clean up any blob URL first
     if (newBlog.imagePreview && newBlog.imagePreview.startsWith("blob:")) {
       URL.revokeObjectURL(newBlog.imagePreview);
     }
@@ -297,19 +289,17 @@ const BlogPage = () => {
           body: JSON.stringify(blogData),
         });
   
-        const responseBody = await response.text(); // Read the body once as text
+        const responseBody = await response.text();
         if (!response.ok) {
           let errorMessage = `Failed to update blog: ${response.status} ${response.statusText}`;
           try {
-            const errorData = JSON.parse(responseBody); // Parse the text manually
+            const errorData = JSON.parse(responseBody);
             errorMessage = errorData.error || errorMessage;
-          } catch (jsonError) {
-            // If JSON parsing fails, use the raw text
-          }
+          } catch (jsonError) {}
           throw new Error(errorMessage);
         }
   
-        const updatedBlog = JSON.parse(responseBody); // Parse the text manually
+        const updatedBlog = JSON.parse(responseBody);
         setBlogs((prev) =>
           prev.map((blog) => (blog.id === currentBlogId ? updatedBlog : blog))
         );
@@ -320,19 +310,17 @@ const BlogPage = () => {
           body: JSON.stringify(blogData),
         });
   
-        const responseBody = await response.text(); // Read the body once as text
+        const responseBody = await response.text();
         if (!response.ok) {
           let errorMessage = `Failed to create blog: ${response.status} ${response.statusText}`;
           try {
-            const errorData = JSON.parse(responseBody); // Parse the text manually
+            const errorData = JSON.parse(responseBody);
             errorMessage = errorData.error || errorMessage;
-          } catch (jsonError) {
-            // If JSON parsing fails, use the raw text
-          }
+          } catch (jsonError) {}
           throw new Error(errorMessage);
         }
   
-        const newBlogData = JSON.parse(responseBody); // Parse the text manually
+        const newBlogData = JSON.parse(responseBody);
         setBlogs((prev) => [newBlogData, ...prev]);
       }
   
@@ -344,6 +332,7 @@ const BlogPage = () => {
       setIsSubmitting(false);
     }
   };
+
   const deleteBlog = async () => {
     if (!deleteModalData.blogId) return;
     setIsDeleting(true);
@@ -354,15 +343,13 @@ const BlogPage = () => {
         method: "DELETE",
       });
   
-      const responseBody = await response.text(); // Read the body once as text
+      const responseBody = await response.text();
       if (!response.ok) {
         let errorMessage = `Failed to delete blog: ${response.status} ${response.statusText}`;
         try {
-          const errorData = JSON.parse(responseBody); // Parse the text manually
+          const errorData = JSON.parse(responseBody);
           errorMessage = errorData.error || errorMessage;
-        } catch (jsonError) {
-          // If JSON parsing fails, use the raw text
-        }
+        } catch (jsonError) {}
         throw new Error(errorMessage);
       }
   
@@ -566,7 +553,6 @@ const BlogPage = () => {
         </div>
       )}
 
-      {/* Delete modal */}
       {deleteModalData.isOpen && (
         <div className="fixed inset-0 bg-black/50 flex justify-center items-center p-4 z-50">
           <div className="bg-white w-full max-w-md rounded-lg shadow-xl">
@@ -624,79 +610,84 @@ const BlogPage = () => {
         </div>
       )}
 
-      {/* Loading state */}
+      {/* Blogs Table */}
       {loading ? (
         <div className="flex justify-center items-center py-10">
           <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
           <span className="ml-2">Loading blogs...</span>
         </div>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {filteredBlogs.map((blog) => (
-            <div
-              key={blog.id}
-              className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
-            >
-              {blog.imageUrl && (
-                <div className="relative h-48 w-full">
-                  <Image
-                    src={blog.imageUrl}
-                    alt={blog.title}
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                  />
-                </div>
-              )}
-              <div className="p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500">
-                    {new Date(blog.date).toLocaleDateString()}
-                  </span>
-                  <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-                    {blog.categories}
-                  </span>
-                </div>
-                <h3 className="text-xl font-bold truncate">{blog.title}</h3>
-                <p className="text-gray-600 line-clamp-3">{blog.content}</p>
-                <div className="flex items-center justify-between mt-4">
-                  <span className="text-sm font-medium text-gray-700">
-                    By {blog.author}
-                  </span>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      data-a="true"
-                      onClick={() => handleEdit(blog)}
-                      className="px-3 py-1.5 text-sm bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setDeleteModalData({
-                          isOpen: true,
-                          blogId: blog.id,
-                          blogTitle: blog.title,
-                        })
-                      }
-                      className="px-3 py-1.5 text-sm bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
+        <div className="overflow-x-auto">
+          {filteredBlogs.length === 0 ? (
+            <p className="text-center text-gray-500 py-10">
+              No blogs found. {blogs.length === 0 ? "Try creating one!" : "Try adjusting your search."}
+            </p>
+          ) : (
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">#</th>
+                  <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Image</th>
+                  <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                  <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Content</th>
+                  <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Author</th>
+                  <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Categories</th>
+                  <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                  <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredBlogs.map((blog, index) => (
+                  <tr key={blog.id}>
+                    <td className="px-2 sm:px-4 py-2 sm:py-4 whitespace-nowrap text-sm text-gray-900">{index + 1}</td>
+                    <td className="px-2 sm:px-4 py-2 sm:py-4 whitespace-nowrap">
+                      {blog.imageUrl ? (
+                        <img
+                          src={blog.imageUrl}
+                          alt={blog.title}
+                          className="w-12 h-12 sm:w-16 sm:h-16 object-cover rounded"
+                        />
+                      ) : (
+                        <span className="text-gray-500 text-sm">No Image</span>
+                      )}
+                    </td>
+                    <td className="px-2 sm:px-4 py-2 sm:py-4 whitespace-nowrap text-sm font-medium text-gray-900">{blog.title}</td>
+                    <td className="px-2 sm:px-4 py-2 sm:py-4 text-sm text-gray-500 line-clamp-2">{blog.content}</td>
+                    <td className="px-2 sm:px-4 py-2 sm:py-4 whitespace-nowrap text-sm text-gray-500">{blog.author}</td>
+                    <td className="px-2 sm:px-4 py-2 sm:py-4 whitespace-nowrap text-sm text-gray-500"></td>
+                    <td className="px-2 sm:px-4 py-2 sm:py-4 whitespace-nowrap text-sm text-gray-500">
+                      {new Date(blog.date).toLocaleDateString()}
+                    </td>
+                    <td className="px-2 sm:px-4 py-2 sm:py-4 whitespace-nowrap text-sm">
+                      <div className="flex space-x-2">
+                        <button
+                          type="button"
+                          onClick={() => handleEdit(blog)}
+                          className="bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600 text-xs sm:text-sm"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setDeleteModalData({
+                              isOpen: true,
+                              blogId: blog.id,
+                              blogTitle: blog.title,
+                            })
+                          }
+                          className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 text-xs sm:text-sm"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
-      )}
-
-      {!loading && filteredBlogs.length === 0 && (
-        <p className="text-center text-gray-500 py-10">
-          No blogs found. {blogs.length === 0 ? "Try creating one!" : "Try adjusting your search."}
-        </p>
       )}
     </div>
   );

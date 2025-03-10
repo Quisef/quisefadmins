@@ -8,11 +8,7 @@ import { faDownload } from '@fortawesome/free-solid-svg-icons';
 import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js';
 import dynamic from 'next/dynamic';
 
-// Dynamically import PaystackPop with ssr: false
-const PaystackPop = dynamic(
-  () => import('@paystack/inline-js'),
-  { ssr: false }
-);
+
 
 // Payment Modal Component
 interface PaymentModalProps {
@@ -34,80 +30,7 @@ const PaymentModal = ({ applicationId, tier, email, onSuccess, onCancel }: Payme
     corporate: 500000,
   };
 
-  const handlePaystackPayment = async () => {
-    // Only execute on client side
-    if (typeof window !== 'undefined') {
-      try {
-        // Dynamically import the Paystack script
-        await new Promise((resolve, reject) => {
-          const script = document.createElement('script');
-          script.src = 'https://js.paystack.co/v1/inline.js';
-          script.async = true;
-          script.onload = resolve;
-          script.onerror = reject;
-          document.head.appendChild(script);
-        });
-        
-        // Once script is loaded, initialize Paystack
-        const paystack = window.PaystackPop;
-        const handler = paystack.setup({
-          key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '',
-          email: email,
-          amount: tierPrices[tier],
-          ref: `mem_${Date.now()}`,
-          onSuccess: async (response) => {
-            try {
-              await updateDoc(doc(db, 'membershipApplications', applicationId), {
-                paymentStatus: 'completed',
-                paymentId: response.reference,
-                paymentMethod: 'paystack',
-              });
-              onSuccess(response.reference);
-            } catch (error) {
-              setPaymentError('Error updating payment status with Paystack');
-              console.error('Paystack payment error:', error);
-            }
-          },
-          onClose: () => {
-            setPaymentError('Payment was cancelled or closed.');
-            onCancel();
-          },
-        });
-        
-        handler.openIframe();
-      } catch (error) {
-        console.error('Error loading Paystack:', error);
-        setPaymentError('Failed to load payment gateway');
-      }
-    }
-  };
-  const handlePaypalPayment = (data: Record<string, unknown>, actions: any) => {
-    return actions.order.create({
-      purchase_units: [
-        {
-          amount: {
-            currency_code: 'NGN',
-            value: (tierPrices[tier] / 100).toString(), // Convert kobo to NGN
-          },
-        },
-      ],
-    });
-  };
-
-  const handlePaypalApprove = async (data: Record<string, unknown>, actions: any) => {
-    try {
-      const details = await actions.order.capture();
-      await updateDoc(doc(db, 'membershipApplications', applicationId), {
-        paymentStatus: 'completed',
-        paymentId: details.id,
-        paymentMethod: 'paypal',
-      });
-      onSuccess(details.id);
-    } catch (error) {
-      setPaymentError('Error updating payment status with PayPal');
-      console.error('PayPal payment error:', error);
-    }
-  };
+  
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 transition-opacity duration-300">
@@ -160,15 +83,7 @@ const PaymentModal = ({ applicationId, tier, email, onSuccess, onCancel }: Payme
           </>
         ) : (
           <>
-            <PayPalScriptProvider options={{ clientId: process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || '' }}>
-              <PayPalButtons
-                style={{ layout: 'vertical' }}
-                createOrder={handlePaypalPayment}
-                onApprove={handlePaypalApprove}
-                onError={() => setPaymentError('An error occurred with PayPal payment')}
-                onCancel={() => setPaymentMethod(null)}
-              />
-            </PayPalScriptProvider>
+            
             <button
               onClick={() => setPaymentMethod(null)}
               className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 rounded-md transition-all duration-300 mt-4"

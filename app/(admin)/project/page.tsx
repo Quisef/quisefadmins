@@ -6,8 +6,8 @@ import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faDownload, faEdit, faTrash, faInfoCircle } from '@fortawesome/free-solid-svg-icons';
 
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
-const MAX_IMAGES = 5;
+const MAX_IMAGE_SIZE = 3 * 1024 * 1024; // 3MB
+const MAX_IMAGES = 15;
 
 export interface Project {
   id?: string;
@@ -66,7 +66,7 @@ export default function ProjectPage() {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [showDetails, setShowDetails] = useState<boolean>(false);
-  const projectsPerPage = 8;
+  const projectsPerPage = 4;
 
   type FormData = Omit<Project, 'id' | 'createdAt' | 'updatedAt'>;
   const initialFormData: FormData = {
@@ -143,7 +143,7 @@ export default function ProjectPage() {
       return;
     }
     if (validFiles.length < files.length) {
-      alert('Some files exceed the 5MB size limit and were not added.');
+      alert('Some files exceed the 3MB size limit and were not added.');
     }
     setImageFiles(prev => [...prev, ...validFiles].slice(0, MAX_IMAGES - (formData.imageUrls?.length || 0)));
   };
@@ -682,7 +682,7 @@ export default function ProjectPage() {
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-all duration-300 disabled:opacity-50"
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-all duration-100 disabled:opacity-10"
                     disabled={loading}
                   >
                     {loading ? 'Saving...' : 'Save Project'}
