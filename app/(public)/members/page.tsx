@@ -5,10 +5,6 @@ import { db } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faDownload } from '@fortawesome/free-solid-svg-icons';
-import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js';
-import dynamic from 'next/dynamic';
-
-
 
 // Payment Modal Component
 interface PaymentModalProps {
@@ -20,7 +16,6 @@ interface PaymentModalProps {
 }
 
 const PaymentModal = ({ applicationId, tier, email, onSuccess, onCancel }: PaymentModalProps) => {
-  const [paymentMethod, setPaymentMethod] = useState<'paystack' | 'paypal' | null>(null);
   const [paymentError, setPaymentError] = useState<string | null>(null);
 
   const tierPrices = {
@@ -30,7 +25,27 @@ const PaymentModal = ({ applicationId, tier, email, onSuccess, onCancel }: Payme
     corporate: 500000,
   };
 
-  
+  const handlePaystackPayment = () => {
+    const paystackHandler = (window as any).PaystackPop.setup({
+      key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY, // Replace with your Paystack public key
+      email: email,
+      amount: tierPrices[tier],
+      currency: 'NGN',
+      ref: `QS_${applicationId}_${Date.now()}`, // Unique reference
+      onClose: () => {
+        setPaymentError('Payment was not completed. Please try again.');
+      },
+      callback: (response: any) => {
+        if (response.status === 'success') {
+          onSuccess(response.reference);
+        } else {
+          setPaymentError('Payment failed. Please try again.');
+        }
+      },
+    });
+
+    paystackHandler.openIframe();
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 transition-opacity duration-300">
@@ -42,57 +57,22 @@ const PaymentModal = ({ applicationId, tier, email, onSuccess, onCancel }: Payme
           {tier === 'corporate' && 'Corporate Membership: ₦500,000'}
         </p>
 
-        {!paymentMethod ? (
-          <div className="space-y-4">
-            <button
-              onClick={() => setPaymentMethod('paystack')}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-md transition-all duration-300 hover:shadow-md"
-            >
-              Pay with Paystack
-            </button>
-            <button
-              onClick={() => setPaymentMethod('paypal')}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-md transition-all duration-300 hover:shadow-md"
-            >
-              Pay with PayPal
-            </button>
-            <button
-              onClick={onCancel}
-              className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-3 rounded-md transition-all duration-300 mt-2"
-            >
-              Cancel
-            </button>
-          </div>
-        ) : paymentMethod === 'paystack' ? (
-          <>
-            <div className="mb-4">
-              <button
-                onClick={handlePaystackPayment}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-md transition-all duration-300 hover:shadow-md"
-              >
-                Pay ₦{tierPrices[tier] / 100}
-              </button>
-            </div>
-            <button
-              onClick={() => setPaymentMethod(null)}
-              className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 rounded-md transition-all duration-300"
-            >
-              Back
-            </button>
-            {paymentError && <p className="text-red-600 text-center mt-4">{paymentError}</p>}
-          </>
-        ) : (
-          <>
-            
-            <button
-              onClick={() => setPaymentMethod(null)}
-              className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 rounded-md transition-all duration-300 mt-4"
-            >
-              Back
-            </button>
-            {paymentError && <p className="text-red-600 text-center mt-4">{paymentError}</p>}
-          </>
-        )}
+        <div className="space-y-4">
+          <button
+            onClick={handlePaystackPayment}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-md transition-all duration-300 hover:shadow-md"
+          >
+            Pay ₦{(tierPrices[tier] / 100).toLocaleString()}
+          </button>
+          <button
+            onClick={onCancel}
+            className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-3 rounded-md transition-all duration-300"
+          >
+            Cancel
+          </button>
+        </div>
+
+        {paymentError && <p className="text-red-600 text-center mt-4">{paymentError}</p>}
       </div>
     </div>
   );
@@ -134,7 +114,7 @@ export default function MembershipPage() {
     script.src = 'https://js.paystack.co/v1/inline.js';
     script.async = true;
     document.head.appendChild(script);
-    
+
     return () => {
       // Cleanup when component unmounts
       if (document.head.contains(script)) {
@@ -144,10 +124,10 @@ export default function MembershipPage() {
   }, []);
 
   const handleDownloadPDF = () => {
-    const pdfUrl = '/pdf/membership-form.pdf';
+    const pdfUrl = '/docs/membership-form.pdf';
     const link = document.createElement('a');
     link.href = pdfUrl;
-    link.download = 'quietshelter-membership-form.pdf';
+    link.download = 'Quietshelter-membership-form.pdf';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -327,10 +307,10 @@ export default function MembershipPage() {
             <div className="space-y-2">
               <label className="block text-gray-700 font-medium">Gender*</label>
               <div className="flex gap-6">
-                <label className="flex items-center">
+                <label className="flex items-center text-black">
                   <input type="radio" name="gender" value="male" required className="mr-2" /> Male
                 </label>
-                <label className="flex items-center">
+                <label className="flex items-center text-black">
                   <input type="radio" name="gender" value="female" required className="mr-2" /> Female
                 </label>
               </div>
@@ -539,4 +519,4 @@ export default function MembershipPage() {
       )}
     </main>
   );
-}
+};

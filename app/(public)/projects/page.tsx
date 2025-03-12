@@ -23,7 +23,7 @@ const metadata: Metadata = {
   title: 'Projects - QuietShelter Empowerment Foundation',
   openGraph: {
     title: 'Projects - QuietShelter Empowerment Foundation',
-    url: 'https://your-domain.com/projects',
+    url: 'https://www.quietshelterfoundation.com/projects',
     images: ['/images/cham.jpg'],
   },
 };

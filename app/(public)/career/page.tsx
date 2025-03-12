@@ -12,7 +12,7 @@ const metadata: Metadata = {
   openGraph: {
     title: 'Careers - QuietShelter Empowerment Foundation',
     description: 'Join QuietShelter’s team through meaningful career and volunteer opportunities to make a global impact.',
-    url: 'https://your-domain.com/careers',
+    url: 'https://www.quietshelterfoundation.com/careers',
     images: ['/images/legs.jpg'],
   },
 };

@@ -6,7 +6,7 @@ import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faDownload, faEdit, faTrash, faInfoCircle } from '@fortawesome/free-solid-svg-icons';
 
-const MAX_IMAGE_SIZE = 3 * 1024 * 1024; // 3MB
+const MAX_IMAGE_SIZE = 1 * 1024 * 1024; // 1MB
 const MAX_IMAGES = 15;
 
 export interface Project {
@@ -143,7 +143,7 @@ export default function ProjectPage() {
       return;
     }
     if (validFiles.length < files.length) {
-      alert('Some files exceed the 3MB size limit and were not added.');
+      alert('Some files exceed the 1MB size limit and were not added.');
     }
     setImageFiles(prev => [...prev, ...validFiles].slice(0, MAX_IMAGES - (formData.imageUrls?.length || 0)));
   };

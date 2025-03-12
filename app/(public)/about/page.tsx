@@ -11,7 +11,7 @@ const metadata: Metadata = {
   openGraph: {
     title: 'About Us - QuietShelter Empowerment Foundation',
     description: 'Learn about QuietShelter Empowerment Foundation, our history, team, and impact.',
-    url: 'https://your-domain.com/about',
+    url: 'https://www.quietshelterfoundation/about',
     images: ['/images/cham.jpg'],
   },
 };

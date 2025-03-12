@@ -316,14 +316,7 @@ const AdminCareers: React.FC = () => {
                 rows={3}
                 required
               />
-              <input
-                type="text"
-                placeholder="Application Link (e.g., /careers/apply/...)"
-                value={newOpportunity.href}
-                onChange={(e) => setNewOpportunity({ ...newOpportunity, href: e.target.value })}
-                className="border p-2 rounded w-full"
-                required
-              />
+             
               <select
                 value={newOpportunity.category}
                 onChange={(e) => setNewOpportunity({ ...newOpportunity, category: e.target.value as 'Jobs' | 'Volunteer' })}
@@ -398,13 +391,7 @@ const AdminCareers: React.FC = () => {
                 rows={3}
                 required
               />
-              <input
-                type="text"
-                value={editingOpportunity.href}
-                onChange={(e) => setEditingOpportunity({ ...editingOpportunity, href: e.target.value })}
-                className="border p-2 rounded w-full"
-                required
-              />
+            
               <select
                 value={editingOpportunity.category}
                 onChange={(e) => setEditingOpportunity({ ...editingOpportunity, category: e.target.value as 'Jobs' | 'Volunteer' })}

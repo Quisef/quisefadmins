@@ -1,8 +1,7 @@
-// app/admin/memberships/page.tsx
 "use client";
 import { useState, useEffect, ChangeEvent } from "react";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs, query, where, deleteDoc, doc } from "firebase/firestore";
 
 interface Member {
   id: string;
@@ -20,12 +19,14 @@ export default function MembershipPage() {
   const [selectedType, setSelectedType] = useState<"personal" | "organization" | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [currentPage, setCurrentPage] = useState<number>(1);
+  const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
+  const [memberToDelete, setMemberToDelete] = useState<string | null>(null);
   const membersPerPage = 5; // Number of members per page
 
   // Define membership tier prices (in NGN)
   const tierPrices: { [key: string]: number } = {
     student: 0,
-    basic: 50000, // Amount in NGN (not kobo, for display purposes)
+    basic: 50000,
     professional: 200000,
     corporate: 500000,
   };
@@ -41,15 +42,12 @@ export default function MembershipPage() {
         return {
           id: doc.id,
           type: data.type as "personal" | "organization",
-          // For personal: combine firstName, middleName, lastName into name
           name:
             data.type === "personal"
               ? `${data.firstName || ""} ${data.middleName || ""} ${data.lastName || ""}`.trim()
               : undefined,
-          // For organization: map orgName to organizationName
           organizationName: data.type === "organization" ? data.orgName : undefined,
           gender: data.type === "personal" ? data.gender : undefined,
-          // Map membershipTier to amountPaid; default to 0 if not completed
           amountPaid: data.paymentStatus === "completed" && data.membershipTier in tierPrices
             ? tierPrices[data.membershipTier]
             : 0,
@@ -64,6 +62,32 @@ export default function MembershipPage() {
     }
   };
 
+  const handleDeleteMember = (id: string) => {
+    setMemberToDelete(id);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteMember = async () => {
+    if (!memberToDelete) return;
+    try {
+      await deleteDoc(doc(db, "membershipApplications", memberToDelete));
+      setMembers((prevMembers) => prevMembers.filter((member) => member.id !== memberToDelete));
+      setError(null);
+      // Adjust current page if deleting the last member on a page
+      const filtered = members.filter((member) => member.id !== memberToDelete);
+      const totalPagesAfterDelete = Math.ceil(filtered.length / membersPerPage);
+      if (currentPage > totalPagesAfterDelete && currentPage > 1) {
+        setCurrentPage(totalPagesAfterDelete);
+      }
+    } catch (err) {
+      setError("Failed to delete member");
+      console.error(err);
+    } finally {
+      setShowDeleteModal(false);
+      setMemberToDelete(null);
+    }
+  };
+
   useEffect(() => {
     if (selectedType) {
       fetchMembers(selectedType);
@@ -72,13 +96,13 @@ export default function MembershipPage() {
 
   const handleMembershipClick = (type: "personal" | "organization") => {
     setSelectedType(type);
-    setCurrentPage(1); // Reset to first page when changing type
-    setSearchTerm(""); // Clear search when changing type
+    setCurrentPage(1);
+    setSearchTerm("");
   };
 
   const handleSearch = (e: ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
-    setCurrentPage(1); // Reset to first page when searching
+    setCurrentPage(1);
   };
 
   // Filter members based on search term
@@ -167,6 +191,7 @@ export default function MembershipPage() {
                       <th className="py-3 px-4 text-left">Gender</th>
                     )}
                     <th className="py-3 px-4 text-left">Amount Paid</th>
+                    <th className="py-3 px-4 text-left">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -180,12 +205,20 @@ export default function MembershipPage() {
                           <td className="py-3 px-4">{member.gender || "N/A"}</td>
                         )}
                         <td className="py-3 px-4">₦{member.amountPaid.toLocaleString()}</td>
+                        <td className="py-3 px-4">
+                          <button
+                            onClick={() => handleDeleteMember(member.id)}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            Delete
+                          </button>
+                        </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
                       <td
-                        colSpan={selectedType === "personal" ? 3 : 2}
+                        colSpan={selectedType === "personal" ? 4 : 3}
                         className="py-4 text-center text-gray-600"
                       >
                         No members found matching your criteria.
@@ -206,7 +239,6 @@ export default function MembershipPage() {
                 >
                   Previous
                 </button>
-
                 {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
                   <button
                     key={pageNum}
@@ -220,7 +252,6 @@ export default function MembershipPage() {
                     {pageNum}
                   </button>
                 ))}
-
                 <button
                   onClick={() => paginate(currentPage + 1)}
                   disabled={currentPage === totalPages}
@@ -246,6 +277,32 @@ export default function MembershipPage() {
         {!selectedType && !loading && (
           <div className="text-center py-8 text-gray-600">
             Please select a membership type to view members.
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white p-6 rounded-lg w-full max-w-md shadow-xl">
+              <h2 className="text-xl font-semibold mb-4 text-gray-700">Confirm Deletion</h2>
+              <p className="mb-6 text-gray-600">
+                Are you sure you want to delete this member? This action cannot be undone.
+              </p>
+              <div className="flex justify-end gap-4">
+                <button
+                  onClick={() => setShowDeleteModal(false)}
+                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDeleteMember}
+                  className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

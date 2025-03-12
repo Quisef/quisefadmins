@@ -20,6 +20,7 @@ const EMPTY_SLIDE: SlideFormData = {
   link: '',
   imageUrl: ''
 };
+const ITEMS_PER_PAGE = 3; // Number of slides per page
 
 // Separate helper for Cloudinary upload
 const uploadImageToCloudinary = async (file: File): Promise<string> => {
@@ -133,7 +134,7 @@ const SlideForm = ({
   </form>
 );
 
-// Main component
+// Main component with pagination
 const AdminSlides: React.FC = () => {
   const [slides, setSlides] = useState<Slide[]>([]);
   const [newSlide, setNewSlide] = useState<SlideFormData>(EMPTY_SLIDE);
@@ -144,10 +145,17 @@ const AdminSlides: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState<boolean>(false);
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
   const [slideToDelete, setSlideToDelete] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState<number>(1);
 
   useEffect(() => {
     fetchSlides();
   }, []);
+
+  // Calculate pagination values
+  const totalPages = Math.ceil(slides.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const currentSlides = slides.slice(startIndex, endIndex);
 
   const fetchSlides = async () => {
     try {
@@ -159,6 +167,8 @@ const AdminSlides: React.FC = () => {
         ...doc.data()
       } as Slide));
       setSlides(slidesList);
+      // Reset to first page when slides are fetched
+      setCurrentPage(1);
     } catch (error) {
       console.error('Error fetching slides:', error);
       toast.error('Failed to load slides. Please try again.');
@@ -185,16 +195,13 @@ const AdminSlides: React.FC = () => {
   const handleAddSlide = async (e: FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
     try {
       let imageUrl = newSlide.imageUrl;
       if (imageFile) {
         imageUrl = await uploadImageToCloudinary(imageFile);
       }
-
       const slideData = { ...newSlide, imageUrl };
       await addDoc(collection(db, 'slides'), slideData);
-      
       setNewSlide(EMPTY_SLIDE);
       setImageFile(null);
       setShowAddModal(false);
@@ -215,10 +222,13 @@ const AdminSlides: React.FC = () => {
 
   const confirmDeleteSlide = async () => {
     if (!slideToDelete) return;
-
     try {
       await deleteDoc(doc(db, 'slides', slideToDelete));
       setSlides(slides.filter(slide => slide.id !== slideToDelete));
+      // Adjust current page if necessary
+      if (currentSlides.length === 1 && currentPage > 1) {
+        setCurrentPage(prev => prev - 1);
+      }
       toast.success('Slide deleted successfully!');
     } catch (error) {
       console.error('Error deleting slide:', error);
@@ -233,20 +243,17 @@ const AdminSlides: React.FC = () => {
     e.preventDefault();
     if (!editingSlide) return;
     setLoading(true);
-
     try {
       let imageUrl = editingSlide.imageUrl;
       if (imageFile) {
         imageUrl = await uploadImageToCloudinary(imageFile);
       }
-
       const updatedSlide = { ...editingSlide, imageUrl };
       await updateDoc(doc(db, 'slides', editingSlide.id), {
         title: updatedSlide.title,
         link: updatedSlide.link,
         imageUrl: updatedSlide.imageUrl
       });
-      
       setEditingSlide(null);
       setImageFile(null);
       await fetchSlides();
@@ -263,6 +270,12 @@ const AdminSlides: React.FC = () => {
     setNewSlide(EMPTY_SLIDE);
     setImageFile(null);
     setShowAddModal(false);
+  };
+
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
   };
 
   return (
@@ -293,65 +306,105 @@ const AdminSlides: React.FC = () => {
             <p className="text-sm text-gray-400 mt-2">Add your first slide by clicking the "Add New Slide" button</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full bg-white border border-gray-200">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th className="py-2 px-4 border-b text-center">#</th>
-                  <th className="py-2 px-4 border-b text-left">Image</th>
-                  <th className="py-2 px-4 border-b text-left">Title</th>
-                  <th className="py-2 px-4 border-b text-left">Link</th>
-                  <th className="py-2 px-4 border-b text-center">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {slides.map((slide, index) => (
-                  <tr key={slide.id} className="hover:bg-gray-50">
-                    <td className="py-3 px-4 border-b text-center">{index + 1}</td>
-                    <td className="py-3 px-4 border-b">
-                      <div className="w-16 h-16 rounded overflow-hidden bg-gray-100">
-                        {slide.imageUrl ? (
-                          <img
-                            src={slide.imageUrl}
-                            alt={slide.title}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = '/placeholder.jpg';
-                              toast.error(`Failed to load image for "${slide.title}"`);
-                            }}
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-gray-200">
-                            <span className="text-gray-400">No image</span>
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 border-b font-medium">{slide.title}</td>
-                    <td className="py-3 px-4 border-b">
-                      <span className="text-blue-500">/{slide.link}</span>
-                    </td>
-                    <td className="py-3 px-4 border-b text-center">
-                      <div className="flex justify-center space-x-2">
-                        <button
-                          onClick={() => setEditingSlide(slide)}
-                          className="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600 transition-colors"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDeleteSlide(slide.id)}
-                          className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition-colors"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
+          <>
+            <div className="overflow-x-auto">
+              <table className="min-w-full bg-white border border-gray-200">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="py-2 px-4 border-b text-center">#</th>
+                    <th className="py-2 px-4 border-b text-left">Image</th>
+                    <th className="py-2 px-4 border-b text-left">Title</th>
+                    <th className="py-2 px-4 border-b text-left">Link</th>
+                    <th className="py-2 px-4 border-b text-center">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {currentSlides.map((slide, index) => (
+                    <tr key={slide.id} className="hover:bg-gray-50">
+                      <td className="py-3 px-4 border-b text-center">{startIndex + index + 1}</td>
+                      <td className="py-3 px-4 border-b">
+                        <div className="w-16 h-16 rounded overflow-hidden bg-gray-100">
+                          {slide.imageUrl ? (
+                            <img
+                              src={slide.imageUrl}
+                              alt={slide.title}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = '/placeholder.jpg';
+                                toast.error(`Failed to load image for "${slide.title}"`);
+                              }}
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                              <span className="text-gray-400">No image</span>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 border-b font-medium">{slide.title}</td>
+                      <td className="py-3 px-4 border-b">
+                        <span className="text-blue-500">/{slide.link}</span>
+                      </td>
+                      <td className="py-3 px-4 border-b text-center">
+                        <div className="flex justify-center space-x-2">
+                          <button
+                            onClick={() => setEditingSlide(slide)}
+                            className="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600 transition-colors"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteSlide(slide.id)}
+                            className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition-colors"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="mt-6 flex justify-between items-center">
+                <div className="text-sm text-gray-600">
+                  Showing {startIndex + 1} to {Math.min(endIndex, slides.length)} of {slides.length} slides
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:bg-gray-100 disabled:text-gray-400 transition-colors"
+                  >
+                    Previous
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                    <button
+                      key={page}
+                      onClick={() => handlePageChange(page)}
+                      className={`px-3 py-1 rounded transition-colors ${
+                        currentPage === page
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-gray-200 hover:bg-gray-300'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:bg-gray-100 disabled:text-gray-400 transition-colors"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
