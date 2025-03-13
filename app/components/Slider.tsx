@@ -1,4 +1,6 @@
 'use client';
+import LoadingSpinner from '@/components/LoadingSpinner';
+
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
@@ -18,23 +20,16 @@ interface Slide {
 // Function to extract a human-readable title from a URL
 const getButtonTextFromLink = (link: string): string => {
   try {
-    // Remove protocol and www if present
     let text = link.replace(/^(https?:\/\/)?(www\.)?/, '');
-    
-    // Remove trailing slash and everything after the first slash
     text = text.split('/')[0];
-    
-    // Remove query parameters and hash
     text = text.split('?')[0].split('#')[0];
-    
-    // Make it more readable
     text = text.charAt(0).toUpperCase() + text.slice(1);
-    
     return text || 'Visit Website';
   } catch (error) {
     return 'Visit Website';
   }
 };
+
 
 const Slider: React.FC = () => {
   const [activeSlide, setActiveSlide] = useState<number>(0);
@@ -80,7 +75,7 @@ const Slider: React.FC = () => {
   if (loading) {
     return (
       <div className="h-screen flex items-center justify-center bg-gray-100">
-        <div className="text-xl text-gray-600">Loading slides...</div>
+        <LoadingSpinner /> {/* Replace text with hovering logo */}
       </div>
     );
   }
@@ -111,7 +106,7 @@ const Slider: React.FC = () => {
           }`}
           aria-hidden={index !== activeSlide}
         >
-          <div className="absolute inset-0 bg-black/30 z-10" /> {/* Overlay for better text visibility */}
+          <div className="absolute inset-0 bg-black/30 z-10" />
           <Image
             src={slide.imageUrl || '/placeholder.jpg'}
             alt={slide.title}

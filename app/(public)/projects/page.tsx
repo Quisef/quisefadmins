@@ -1,5 +1,5 @@
 'use client';
-
+import LoadingSpinner from '@/components/LoadingSpinner';
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Metadata } from 'next';

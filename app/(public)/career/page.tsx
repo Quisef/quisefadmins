@@ -1,4 +1,5 @@
 'use client';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
@@ -79,7 +80,11 @@ export default function CareersPage() {
   const volunteerOpportunities = opportunities.filter((opp) => opp.type === 'Volunteer');
 
   if (loading) {
-    return <div className="h-screen flex items-center justify-center">Loading...</div>;
+    return (
+      <div className="h-screen flex items-center justify-center bg-gray-100">
+        <LoadingSpinner />
+      </div>
+    );
   }
 
   return (

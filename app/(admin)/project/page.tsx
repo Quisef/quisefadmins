@@ -207,28 +207,33 @@ export default function ProjectPage() {
   };
 
   const openDeleteModal = (projectId: string): void => {
+    console.log('Opening delete modal for project:', projectId); // Debug log
     setProjectToDelete(projectId);
     setIsDeleteModalOpen(true);
+    setIsModalOpen(false); // Ensure edit modal stays closed
   };
 
   const handleDelete = async (): Promise<void> => {
     if (!projectToDelete) return;
     
     setLoading(true);
+    setError(null);
     try {
       await deleteDoc(doc(db, 'projects', projectToDelete));
       await fetchProjects();
       setIsDeleteModalOpen(false);
       setProjectToDelete(null);
+      alert('Project deleted successfully!');
     } catch (err) {
       console.error('Delete error:', err);
-      setError('Failed to delete project');
+      setError('Failed to delete project. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   const openEditModal = (project: Project): void => {
+    console.log('Opening edit modal for project:', project.id); // Debug log
     setCurrentProject(project);
     setFormData({
       name: project.name,
@@ -242,6 +247,7 @@ export default function ProjectPage() {
     setImageFiles([]);
     setPreviewUrls([]);
     setIsModalOpen(true);
+    setIsDeleteModalOpen(false); // Ensure delete modal stays closed
   };
 
   const resetForm = (): void => {
@@ -419,7 +425,9 @@ export default function ProjectPage() {
                         <FontAwesomeIcon icon={faInfoCircle} />
                       </button>
                       <button
-                        onClick={() => project.id && openDeleteModal(project.id)}
+                        onClick={() => {
+                          console.log('Delete button clicked for:', project.id); // Debug log
+                        }}
                         className="p-2 bg-gray-100 text-red-600 rounded-full hover:bg-gray-200 transition-all duration-300"
                         title="Delete Project"
                       >

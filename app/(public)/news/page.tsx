@@ -1,4 +1,5 @@
 // app/blog/page.tsx (Server Component)
+
 import { Metadata } from 'next';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, orderBy, query } from 'firebase/firestore';
