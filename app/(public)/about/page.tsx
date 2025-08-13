@@ -422,11 +422,10 @@ export default function AboutPage() {
               <div className="absolute -inset-4 bg-gradient-to-r from-blue-200 to-indigo-200 rounded-[100px_20px_20px_20px] opacity-20 group-hover:opacity-30 transition-all duration-500 blur-xl"></div>
               <div className="relative h-72 sm:h-80 lg:h-96 w-full rounded-[90px_10px_10px_10px] overflow-hidden shadow-2xl group-hover:shadow-3xl transition-all duration-500">
                 <Image
-                  src="/images/Cham.jpg"
+                  src="/images/goodnesschama.jpg"
                   alt="Executive Director - Championing child protection and community empowerment"
                   fill
                   style={{ objectFit: 'contain' }}
-                  className="transition-all duration-700 group-hover:scale-105 group-hover:brightness-110"
                   priority
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
