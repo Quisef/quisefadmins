@@ -381,31 +381,66 @@ export default function AboutPage() {
       </section>
 
       {/* About Section */}
-      <section className="py-12 md:py-16 px-6">
-        <div className="container mx-auto max-w-5xl flex flex-col lg:flex-row items-center gap-8">
+      <section className="py-12 md:py-16 px-6 bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+      <div className="container mx-auto max-w-6xl">
+        <div className="flex flex-col lg:flex-row items-center gap-12">
           <div className="lg:w-1/2 space-y-6">
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-800">
-              Protecting a Child at Every Step
-            </h2>
-            <p className="text-gray-700 text-base md:text-lg leading-relaxed">
-              The Quiet Shelter Empowerment Foundation is a registered not-for-profit organization
-              established in August 2020 in Jimeta, Yola, Adamawa State, Nigeria. Our primary purpose
-              is to provide humanitarian services to communities, aiming to bring about positive
-              changes and developments.
-            </p>
-          </div>
-            <div className="relative h-64 sm:h-80 lg:h-96 w-full rounded-[90px_10px_10px_10px] overflow-hidden">
-              <Image
-                src="/images/Cham.jpg"
-                alt="Executive Director Speech"
-                fill
-                style={{ objectFit: 'cover' }}
-                className="tabsolute inset-0 w-full h-full  transition-transform duration-500 hover:scale-105ransition-transform duration-500 hover:scale-105"
-                priority
-              />
+            <div className="space-y-4">
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-blue-600 to-black bg-clip-text text-transparent leading-tight">
+                Protecting a Child at Every Step
+              </h2>
+              <div className="w-24 h-1 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full"></div>
             </div>
+            
+            <div className="space-y-4">
+              <p className="text-gray-700 text-lg leading-relaxed">
+                The Quiet Shelter Empowerment Foundation is a registered not-for-profit organization
+                established in August 2020 in Jimeta, Yola, Adamawa State, Nigeria.
+              </p>
+              <p className="text-gray-600 text-base leading-relaxed">
+                Our primary purpose is to provide humanitarian services to communities, aiming to bring 
+                about positive changes and developments that create lasting impact for vulnerable children 
+                and families.
+              </p>
+            </div>
+
+            <div className="flex items-center space-x-4 pt-4">
+              <div className="flex -space-x-2">
+                <div className="w-8 h-8 rounded-full bg-blue-100 border-2 border-white flex items-center justify-center">
+                  <span className="text-blue-600 text-xs font-semibold">100+</span>
+                </div>
+                <div className="w-8 h-8 rounded-full bg-indigo-100 border-2 border-white flex items-center justify-center">
+                  <span className="text-blue-600 text-xs font-semibold">Lives</span>
+                </div>
+              </div>
+              <span className="text-sm text-gray-500">Children protected since 2020</span>
+            </div>
+          </div>
+
+          <div className="lg:w-1/2 w-full">
+            <div className="relative group">
+              <div className="absolute -inset-4 bg-gradient-to-r from-blue-200 to-indigo-200 rounded-[100px_20px_20px_20px] opacity-20 group-hover:opacity-30 transition-all duration-500 blur-xl"></div>
+              <div className="relative h-72 sm:h-80 lg:h-96 w-full rounded-[90px_10px_10px_10px] overflow-hidden shadow-2xl group-hover:shadow-3xl transition-all duration-500">
+                <Image
+                  src="/images/Cham.jpg"
+                  alt="Executive Director - Championing child protection and community empowerment"
+                  fill
+                  style={{ objectFit: 'cover' }}
+                  className="transition-all duration-700 group-hover:scale-105 group-hover:brightness-110"
+                  priority
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                
+                {/* Floating badge */}
+                <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm rounded-full px-3 py-1 shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
+                  <span className="text-xs font-semibold text-blue-600">Est. 2020</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-      </section>
+      </div>
+    </section>
 
       {/* History Section */}
       <section className="py-12 md:py-16 px-6 bg-gray-100">
