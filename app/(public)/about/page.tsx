@@ -436,11 +436,16 @@ export default function AboutPage() {
               across Nigeria through our dedicated programs and initiatives.
             </p>
           </div>
-          <VideoPlayer
-            src="/videos/quiseff.mp4"
-            poster="/images/climate.jpg"
-            title="QuietShelter Foundation Impact Story"
-          />
+          <div className="relative w-full max-w-4xl mx-auto aspect-video rounded-xl overflow-hidden shadow-lg">
+            <iframe
+              className="w-full h-full"
+              src="https://go.screenpal.com/player/cTjIfOn2Qhg?width=100%&height=100%&ff=1&title=0"
+              title="QuietShelter Foundation Impact Story"
+              style={{ border: 0 }}
+              scrolling="no"
+              allowFullScreen
+            ></iframe>
+          </div>
         </div>
       </section>
 
