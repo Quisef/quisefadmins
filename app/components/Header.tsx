@@ -15,7 +15,7 @@ const Header: React.FC = () => {
     <header className="bg-gradient-to-r from-gray-900 to-gray-800 text-white py-4 sticky top-0 z-50 shadow-md">
       <div className="container mx-auto flex items-center justify-between px-4 lg:px-8">
         {/* Logo */}
-        <Link href="/home" className="flex items-center transition-transform duration-300 hover:scale-105">
+        <Link href="/" className="flex items-center transition-transform duration-300 hover:scale-105">
           <Image
             src="/images/Logo.png"
             alt="QuietShelter Logo"
@@ -48,7 +48,7 @@ const Header: React.FC = () => {
         >
           <ul className="flex flex-col md:flex-row md:space-x-8 p-6 md:p-0 text-lg font-medium">
             {[
-              { href: '/home', label: 'Home' },
+              { href: '/', label: 'Home' },
               { href: '/strategy', label: 'Strategy' },
               { href: '/about', label: 'Our Story' },
               { href: '/donation', label: 'Donation' },
