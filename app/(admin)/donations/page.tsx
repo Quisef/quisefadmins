@@ -9,10 +9,11 @@ interface Cause {
   id: string;
   title: string;
   description: string;
-  imageUrl: string; // Stores Cloudinary secure_url
-  raised: number | undefined; // Allow undefined for placeholder
-  goal: number | undefined;   // Allow undefined for placeholder
+  imageUrl: string;
+  raised: number | undefined;
+  goal: number | undefined;
   color: string;
+  paystackLink: string; // NEW: Paystack payment link
 }
 
 interface Progress {
@@ -32,9 +33,10 @@ const DonationPage: React.FC = () => {
     title: '',
     description: '',
     imageUrl: '',
-    raised: undefined, // Start as undefined
-    goal: undefined,   // Start as undefined
+    raised: undefined,
+    goal: undefined,
     color: 'blue',
+    paystackLink: '', // NEW
   });
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editCause, setEditCause] = useState<Cause | null>(null);
@@ -120,6 +122,12 @@ const DonationPage: React.FC = () => {
         return;
       }
 
+      if (!newCause.paystackLink.trim()) {
+        alert('Please provide a Paystack payment link');
+        setLoading(false);
+        return;
+      }
+
       const newDocRef = doc(collection(db, 'causes'));
       await setDoc(newDocRef, { ...newCause, imageUrl });
       setNewCause({
@@ -129,6 +137,7 @@ const DonationPage: React.FC = () => {
         raised: undefined,
         goal: undefined,
         color: 'blue',
+        paystackLink: '',
       });
       setImageFile(null);
       setIsAddModalOpen(false);
@@ -156,11 +165,17 @@ const DonationPage: React.FC = () => {
         imageUrl = await uploadImageToCloudinary(imageFile);
       }
 
+      if (!editCause.paystackLink.trim()) {
+        alert('Please provide a Paystack payment link');
+        setLoading(false);
+        return;
+      }
+
       await updateDoc(doc(db, 'causes', editCause.id), {
         ...editCause,
         imageUrl,
-        raised: editCause.raised ?? 0, // Default to 0 if undefined
-        goal: editCause.goal ?? 0,     // Default to 0 if undefined
+        raised: editCause.raised ?? 0,
+        goal: editCause.goal ?? 0,
       });
       setEditCause(null);
       setImageFile(null);
@@ -227,6 +242,7 @@ const DonationPage: React.FC = () => {
       raised: undefined,
       goal: undefined,
       color: 'blue',
+      paystackLink: '',
     });
     setImageFile(null);
     setIsAddModalOpen(false);
@@ -303,8 +319,8 @@ const DonationPage: React.FC = () => {
 
       {/* Add Cause Modal */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4">
-          <div className="bg-white p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-md">
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl sm:text-2xl font-semibold mb-4">Add New Cause</h2>
             <form onSubmit={handleAddCause} className="space-y-4">
               <input
@@ -330,6 +346,7 @@ const DonationPage: React.FC = () => {
                 value={newCause.description}
                 onChange={(e) => setNewCause({ ...newCause, description: e.target.value })}
                 className="w-full p-2 border rounded text-sm sm:text-base"
+                rows={3}
                 required
               />
               <input
@@ -353,6 +370,14 @@ const DonationPage: React.FC = () => {
                   const value = e.target.value === '' ? undefined : Number(e.target.value) || 0;
                   setNewCause({ ...newCause, goal: value });
                 }}
+                className="w-full p-2 border rounded text-sm sm:text-base"
+                required
+              />
+              <input
+                type="url"
+                placeholder="Paystack Payment Link (e.g., https://paystack.shop/pay/...)"
+                value={newCause.paystackLink}
+                onChange={(e) => setNewCause({ ...newCause, paystackLink: e.target.value })}
                 className="w-full p-2 border rounded text-sm sm:text-base"
                 required
               />
@@ -380,8 +405,8 @@ const DonationPage: React.FC = () => {
 
       {/* Edit Cause Modal */}
       {isEditModalOpen && editCause && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4">
-          <div className="bg-white p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-md">
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl sm:text-2xl font-semibold mb-4">Edit Cause</h2>
             <form onSubmit={handleUpdateCause} className="space-y-4">
               <input
@@ -412,6 +437,7 @@ const DonationPage: React.FC = () => {
                 value={editCause.description}
                 onChange={(e) => setEditCause({ ...editCause, description: e.target.value })}
                 className="w-full p-2 border rounded text-sm sm:text-base"
+                rows={3}
                 required
               />
               <input
@@ -435,6 +461,14 @@ const DonationPage: React.FC = () => {
                   const value = e.target.value === '' ? undefined : Number(e.target.value) || 0;
                   setEditCause({ ...editCause, goal: value });
                 }}
+                className="w-full p-2 border rounded text-sm sm:text-base"
+                required
+              />
+              <input
+                type="url"
+                placeholder="Paystack Payment Link (e.g., https://paystack.shop/pay/...)"
+                value={editCause.paystackLink}
+                onChange={(e) => setEditCause({ ...editCause, paystackLink: e.target.value })}
                 className="w-full p-2 border rounded text-sm sm:text-base"
                 required
               />
@@ -493,7 +527,7 @@ const DonationPage: React.FC = () => {
       <section>
         <h2 className="text-xl sm:text-2xl font-semibold mb-4">Existing Causes</h2>
         <div className="bg-white rounded-lg shadow-md overflow-x-auto">
-          <table className="w-full min-w-[640px]">
+          <table className="w-full min-w-[800px]">
             <thead>
               <tr className="bg-gray-100">
                 <th className="p-2 sm:p-3 text-left text-xs sm:text-sm">#</th>
@@ -502,6 +536,7 @@ const DonationPage: React.FC = () => {
                 <th className="p-2 sm:p-3 text-left text-xs sm:text-sm">Description</th>
                 <th className="p-2 sm:p-3 text-left text-xs sm:text-sm">Raised</th>
                 <th className="p-2 sm:p-3 text-left text-xs sm:text-sm">Goal</th>
+                <th className="p-2 sm:p-3 text-left text-xs sm:text-sm">Payment Link</th>
                 <th className="p-2 sm:p-3 text-left text-xs sm:text-sm">Actions</th>
               </tr>
             </thead>
@@ -527,6 +562,16 @@ const DonationPage: React.FC = () => {
                   </td>
                   <td className="p-2 sm:p-3 text-xs sm:text-sm">${cause.raised ?? 0}</td>
                   <td className="p-2 sm:p-3 text-xs sm:text-sm">${cause.goal ?? 0}</td>
+                  <td className="p-2 sm:p-3 text-xs sm:text-sm">
+                    <a 
+                      href={cause.paystackLink} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline truncate block max-w-[150px]"
+                    >
+                      {cause.paystackLink ? 'View Link' : 'N/A'}
+                    </a>
+                  </td>
                   <td className="p-2 sm:p-3 space-x-1 sm:space-x-2">
                     <button
                       onClick={() => {

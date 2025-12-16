@@ -11,10 +11,11 @@ interface Cause {
   id: string;
   title: string;
   description: string;
-  imageUrl: string; // Stores Cloudinary secure_url
+  imageUrl: string;
   raised: number;
   goal: number;
   color: string;
+  paystackLink: string; // NEW: Paystack payment link
 }
 
 interface Progress {
@@ -81,7 +82,9 @@ const CauseCard = memo(({ cause }: { cause: Cause }) => {
           <span>Goal: ${cause.goal.toLocaleString()}</span>
         </div>
         <Link
-          href="#donation-form"
+          href={cause.paystackLink || '#'}
+          target="_blank"
+          rel="noopener noreferrer"
           className={`block text-center ${colorClasses.bg} ${colorClasses.hover.replace(
             'hover:',
             ''
@@ -143,11 +146,11 @@ const DonationPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [db]); // Explicitly include db as a dependency
+  }, [db]);
 
   useEffect(() => {
     fetchData();
-  }, [fetchData]); // fetchData is stable due to useCallback
+  }, [fetchData]);
 
   if (loading) {
     return (
@@ -181,7 +184,7 @@ const DonationPage: React.FC = () => {
             Your donation can change lives. Join us in our mission to create a better world.
           </p>
           <Link
-            href="#donation-form"
+            href="https://paystack.shop/pay/Food_security"
             className="inline-block bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-semibold py-3 px-8 rounded-full text-lg transition-all duration-300 hover:shadow-lg"
           >
             Donate Now
@@ -245,7 +248,7 @@ const DonationPage: React.FC = () => {
                 Combat Global Poverty
               </h2>
               <p className="text-gray-700 text-base md:text-lg">
-                Nearly 700 million people live in extreme poverty worldwide...
+                Nearly 700 million people live in extreme poverty worldwide. Your generosity provides essential support to those in desperate need.
               </p>
               <ul className="list-disc list-inside text-gray-600 space-y-2">
                 <li>Emergency food and clean water</li>
@@ -255,7 +258,9 @@ const DonationPage: React.FC = () => {
                 <li>Healthcare access for families</li>
               </ul>
               <Link
-                href="#donation-form"
+                href="https://paystack.shop/pay/Food_security"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-full transition-all duration-300 hover:shadow-lg"
               >
                 Support This Cause
@@ -266,8 +271,11 @@ const DonationPage: React.FC = () => {
       </section>
 
       {/* Cause Cards */}
-      <section className="py-12 md:py-16 px-6 bg-gray-50">
+      <section id="causes" className="py-12 md:py-16 px-6 bg-gray-50">
         <div className="container mx-auto max-w-5xl">
+          <h2 className="text-2xl sm:text-3xl font-bold text-center text-gray-800 mb-8 md:mb-12">
+            Support Our Causes
+          </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
             {Array.isArray(causes) && causes.length > 0 ? (
               causes.map((cause) => (
