@@ -29,7 +29,7 @@
     "firebase-admin": "^13.1.0",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.471.0",
-    "next": "^15.2.1",
+    "next": "15.2.8",
     "next-cloudinary": "^6.16.0",
     "paystack": "^2.0.1",
     "paystack-inline-ts": "^1.0.3",
