@@ -203,7 +203,7 @@ const Footer: React.FC = () => {
       {/* Footer Bottom */}
       <div className="border-t border-gray-800 py-6 bg-gray-900">
         <div className="container mx-auto px-6 flex flex-col md:flex-row justify-between items-center text-sm text-gray-400">
-          <p>© 2025 QuietShelter Empowerment Foundation | All Rights Reserved</p>
+          <p>© 2026 QuietShelter Empowerment Foundation | All Rights Reserved</p>
           <div className="mt-4 md:mt-0 flex space-x-6">
             <Link href="/privacy-policy" className="hover:text-yellow-400 transition-colors duration-300">
               Privacy Policy
