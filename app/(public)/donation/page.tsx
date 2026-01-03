@@ -119,7 +119,7 @@ const DonationPage: React.FC = () => {
       } as Cause));
 
       const progressData = progressSnapshot.empty
-        ? { raised: 0, goal: 20000, donors: 0 }
+        ? { raised: 0, goal: 20000000, donors: 0 }
         : (progressSnapshot.docs[0].data() as Progress);
 
       // Update state only if data has changed to prevent unnecessary re-renders
@@ -129,12 +129,12 @@ const DonationPage: React.FC = () => {
       setProgress((prevProgress) =>
         JSON.stringify(prevProgress) !== JSON.stringify({
           raised: progressData.raised || 0,
-          goal: progressData.goal || 20000,
+          goal: progressData.goal || 20000000,
           donors: progressData.donors || 0,
         })
           ? {
               raised: progressData.raised || 0,
-              goal: progressData.goal || 20000,
+              goal: progressData.goal || 20000000,
               donors: progressData.donors || 0,
             }
           : prevProgress

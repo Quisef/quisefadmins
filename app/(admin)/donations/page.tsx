@@ -84,7 +84,7 @@ const DonationPage: React.FC = () => {
 
     console.log('Uploading to Cloudinary:', file.name);
     const response = await fetch(
-      `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+      `https://api.cloudinary.com/v1_1/ ₦{cloudName}/image/upload`,
       {
         method: 'POST',
         body: formData,
@@ -94,7 +94,7 @@ const DonationPage: React.FC = () => {
     if (!response.ok) {
       const errorData = await response.json();
       console.error('Upload error details:', errorData);
-      throw new Error(`Upload failed: ${errorData.error?.message || response.statusText}`);
+      throw new Error(`Upload failed:  ₦{errorData.error?.message || response.statusText}`);
     }
 
     const data = await response.json();
@@ -260,7 +260,7 @@ const DonationPage: React.FC = () => {
         <div className="bg-white p-6 rounded-lg shadow-md">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             <div>
-              <label className="block mb-2">Raised ($)</label>
+              <label className="block mb-2">Raised ( ₦)</label>
               <input
                 type="number"
                 min="0"
@@ -272,7 +272,7 @@ const DonationPage: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block mb-2">Goal ($)</label>
+              <label className="block mb-2">Goal ( ₦)</label>
               <input
                 type="number"
                 min="0"
@@ -350,7 +350,7 @@ const DonationPage: React.FC = () => {
                 required
               />
               <input
-                placeholder="Raised ($)"
+                placeholder="Raised ( ₦)"
                 type="number"
                 min="0"
                 value={newCause.raised ?? ''}
@@ -362,7 +362,7 @@ const DonationPage: React.FC = () => {
                 required
               />
               <input
-                placeholder="Goal ($)"
+                placeholder="Goal ( ₦)"
                 type="number"
                 min="0"
                 value={newCause.goal ?? ''}
@@ -422,7 +422,7 @@ const DonationPage: React.FC = () => {
                     src={editCause.imageUrl || '/images/fallback.jpg'}
                     alt="Current cause"
                     className="w-24 h-24 rounded object-cover mb-2"
-                    onError={(e) => console.error(`Failed to load image: ${editCause.imageUrl}`)}
+                    onError={(e) => console.error(`Failed to load image:  ₦{editCause.imageUrl}`)}
                   />
                 )}
                 <input
@@ -441,7 +441,7 @@ const DonationPage: React.FC = () => {
                 required
               />
               <input
-                placeholder="Raised ($)"
+                placeholder="Raised ( ₦)"
                 type="number"
                 min="0"
                 value={editCause.raised ?? ''}
@@ -453,7 +453,7 @@ const DonationPage: React.FC = () => {
                 required
               />
               <input
-                placeholder="Goal ($)"
+                placeholder="Goal ( ₦)"
                 type="number"
                 min="0"
                 value={editCause.goal ?? ''}
@@ -551,7 +551,7 @@ const DonationPage: React.FC = () => {
                         alt={cause.title}
                         className="w-12 h-12 rounded object-cover"
                         onError={(e) =>
-                          console.error(`Failed to load image: ${cause.imageUrl}`)
+                          console.error(`Failed to load image:  ₦{cause.imageUrl}`)
                         }
                       />
                     )}
@@ -560,8 +560,8 @@ const DonationPage: React.FC = () => {
                   <td className="p-2 sm:p-3 text-xs sm:text-sm truncate max-w-[150px] sm:max-w-[200px]">
                     {cause.description}
                   </td>
-                  <td className="p-2 sm:p-3 text-xs sm:text-sm">${cause.raised ?? 0}</td>
-                  <td className="p-2 sm:p-3 text-xs sm:text-sm">${cause.goal ?? 0}</td>
+                  <td className="p-2 sm:p-3 text-xs sm:text-sm"> ₦{cause.raised ?? 0}</td>
+                  <td className="p-2 sm:p-3 text-xs sm:text-sm"> ₦{cause.goal ?? 0}</td>
                   <td className="p-2 sm:p-3 text-xs sm:text-sm">
                     <a 
                       href={cause.paystackLink} 
