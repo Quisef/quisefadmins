@@ -62,7 +62,7 @@ const CauseCard = memo(({ cause }: { cause: Cause }) => {
           onError={(e) => {
             const target = e.target as HTMLImageElement;
             target.src = '/images/fallback.jpg';
-            console.error(`Failed to load image: ${cause.imageUrl}`);
+            console.error(`Failed to load image:₦{cause.imageUrl}`);
           }}
         />
       </div>
@@ -73,19 +73,19 @@ const CauseCard = memo(({ cause }: { cause: Cause }) => {
         </p>
         <div className="h-2 bg-gray-200 rounded-full mb-4 overflow-hidden">
           <div
-            className={`h-full ${colorClasses.bg} rounded-full transition-all duration-500`}
+            className={`h-full₦{colorClasses.bg} rounded-full transition-all duration-500`}
             style={{ width: `${progressPercentage}%` }}
           />
         </div>
         <div className="flex justify-between text-sm text-gray-500 mb-4">
           <span>${cause.raised.toLocaleString()} raised</span>
-          <span>Goal: ${cause.goal.toLocaleString()}</span>
+          <span>Goal:₦{cause.goal.toLocaleString()}</span>
         </div>
         <Link
           href={cause.paystackLink || '#'}
           target="_blank"
           rel="noopener noreferrer"
-          className={`block text-center ${colorClasses.bg} ${colorClasses.hover.replace(
+          className={`block text-center₦{colorClasses.bg}₦{colorClasses.hover.replace(
             'hover:',
             ''
           )} text-white font-semibold py-2 px-4 rounded-md transition-all duration-300 hover:shadow-md`}
@@ -102,7 +102,7 @@ CauseCard.displayName = 'CauseCard';
 // Main Component
 const DonationPage: React.FC = () => {
   const [causes, setCauses] = useState<Cause[]>([]);
-  const [progress, setProgress] = useState<Progress>({ raised: 0, goal: 20000, donors: 0 });
+  const [progress, setProgress] = useState<Progress>({ raised: 0, goal: 20000000, donors: 0 });
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
@@ -208,13 +208,13 @@ const DonationPage: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
               <div className="bg-blue-50 p-4 md:p-6 rounded-lg text-center">
                 <h3 className="text-2xl md:text-3xl font-bold text-blue-600 mb-2">
-                  ${progress.raised.toLocaleString()}
+                 ₦{progress.raised.toLocaleString()}
                 </h3>
                 <p className="text-gray-600 text-sm md:text-base">Raised so far</p>
               </div>
               <div className="bg-yellow-50 p-4 md:p-6 rounded-lg text-center">
                 <h3 className="text-2xl md:text-3xl font-bold text-yellow-600 mb-2">
-                  ${progress.goal.toLocaleString()}
+                 ₦{progress.goal.toLocaleString()}
                 </h3>
                 <p className="text-gray-600 text-sm md:text-base">Target goal</p>
               </div>
