@@ -142,7 +142,7 @@ const DonationPage: React.FC = () => {
     } catch (error) {
       console.error('Error fetching data:', error);
       setCauses([]);
-      setProgress({ raised: 0, goal: 20000, donors: 0 });
+      setProgress({ raised: 0, goal: 20000000, donors: 0 });
     } finally {
       setLoading(false);
     }
