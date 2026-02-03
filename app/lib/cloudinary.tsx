@@ -2,16 +2,16 @@ import { v2 as cloudinary } from 'cloudinary';
 
 cloudinary.config({
   cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-  secure: true
+  api_key: process.env.CLOUDINARY_API_KEY,          // removed NEXT_PUBLIC_ prefix
+  api_secret: process.env.CLOUDINARY_API_SECRET,   // server-only
+  secure: true,
 });
 
 export default cloudinary;
 
 export const pitchDeckUploadConfig = {
   folder: 'futurentrepeneurship/pitch-decks',
-  resource_type: 'raw' as const, // For non-image files like PDFs
+  resource_type: 'raw' as const,
   allowed_formats: ['pdf', 'ppt', 'pptx'],
-  max_file_size: 10485760, // 10MB in bytes
+  max_file_size: 10485760, // 10MB
 };

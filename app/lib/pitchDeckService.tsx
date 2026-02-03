@@ -20,35 +20,34 @@ export interface PitchDeckData {
 }
 
 // ────────────────────────────────────────────────
-// Upload file to Cloudinary
+// Upload file via the /api/upload-pitch-deck route
+// (keeps Cloudinary credentials server-side only)
 // ────────────────────────────────────────────────
-async function uploadToCloudinary(file: File, registrationId: string): Promise<{ url: string; publicId: string }> {
+async function uploadViaSelfApi(
+  file: File,
+  registrationId: string
+): Promise<{ url: string; publicId: string }> {
   const formData = new FormData();
   formData.append('file', file);
-  formData.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!);
-  formData.append('folder', 'pitch-decks');
-  formData.append('public_id', `${registrationId}_${Date.now()}`);
-  
-  // You can add tags for easier management
-  formData.append('tags', `registration_${registrationId},pitch_deck`);
+  formData.append('registrationId', registrationId);
 
-  const response = await fetch(
-    `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/raw/upload`,
-    {
-      method: 'POST',
-      body: formData,
-    }
-  );
+  // Do NOT manually set Content-Type here.
+  // The browser must set it automatically so the multipart boundary is included.
+  const response = await fetch('/api/upload-pitch-deck', {
+    method: 'POST',
+    body: formData,
+  });
+
+  // Parse the JSON body regardless of status so we can read the error message
+  const data = await response.json();
 
   if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Cloudinary upload failed: ${error}`);
+    throw new Error(data.error || 'Upload failed with an unknown error');
   }
 
-  const data = await response.json();
   return {
-    url: data.secure_url,
-    publicId: data.public_id,
+    url: data.url,
+    publicId: data.publicId,
   };
 }
 
@@ -60,10 +59,13 @@ export async function savePitchDeck(
   file: File
 ): Promise<void> {
   try {
-    // 1. Upload file to Cloudinary
-    const { url: downloadURL, publicId } = await uploadToCloudinary(file, data.registrationId);
+    // 1. Upload file via API route → Cloudinary (server-side)
+    const { url: downloadURL, publicId } = await uploadViaSelfApi(
+      file,
+      data.registrationId
+    );
 
-    // 2. Save to Firestore
+    // 2. Save metadata to Firestore
     await addDoc(collection(db, 'pitch-decks'), {
       ...data,
       pitchDeckUrl: downloadURL,
@@ -81,8 +83,10 @@ export async function savePitchDeck(
       data.businessName
     );
   } catch (error) {
+    // Log the real error so you can debug it in the console
     console.error('Error saving pitch deck:', error);
-    throw new Error('Failed to save pitch deck');
+    // Re-throw so the calling component receives the actual message
+    throw error;
   }
 }
 

@@ -8,6 +8,7 @@ export async function POST(request: NextRequest) {
     const file = formData.get('file') as File;
     const registrationId = formData.get('registrationId') as string;
 
+    // ── Validate inputs ──────────────────────────────────────────
     if (!file) {
       return NextResponse.json(
         { error: 'No file provided' },
@@ -22,7 +23,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate file type
+    // ── Validate file type ───────────────────────────────────────
     const allowedTypes = [
       'application/pdf',
       'application/vnd.ms-powerpoint',
@@ -36,7 +37,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate file size (10MB)
+    // ── Validate file size (10 MB) ───────────────────────────────
     if (file.size > 10 * 1024 * 1024) {
       return NextResponse.json(
         { error: 'File size exceeds 10MB limit' },
@@ -44,18 +45,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Convert file to buffer
+    // ── Convert file to buffer ───────────────────────────────────
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Generate unique filename
+    // ── Generate unique public_id ────────────────────────────────
     const timestamp = Date.now();
     const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
     const publicId = `${registrationId}_${timestamp}_${sanitizedFileName}`;
 
-    // Upload to Cloudinary
+    // ── Upload to Cloudinary via stream ──────────────────────────
     const result = await new Promise((resolve, reject) => {
-      cloudinary.uploader.upload_stream(
+      const stream = cloudinary.uploader.upload_stream(
         {
           ...pitchDeckUploadConfig,
           public_id: publicId,
@@ -65,7 +66,8 @@ export async function POST(request: NextRequest) {
           if (error) reject(error);
           else resolve(result);
         }
-      ).end(buffer);
+      );
+      stream.end(buffer);
     });
 
     const uploadResult = result as any;
@@ -86,10 +88,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
-// Configure route to handle larger file uploads
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};

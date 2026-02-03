@@ -34,7 +34,7 @@ export default function PitchDeckForm() {
   const [submitError,   setSubmitError]   = useState('');
   const [filePreview,   setFilePreview]   = useState('');
 
-  // Auto-populate from URL params
+  // ── Auto-populate from URL params ──────────────────────────────
   useEffect(() => {
     const id       = searchParams.get('id');
     const name     = searchParams.get('name');
@@ -52,7 +52,7 @@ export default function PitchDeckForm() {
     }
   }, [searchParams]);
 
-  // Handlers
+  // ── Handlers ────────────────────────────────────────────────────
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
     setErrors(prev  => ({ ...prev, [e.target.name]: '' }));
@@ -110,13 +110,18 @@ export default function PitchDeckForm() {
       setSubmitSuccess(true);
     } catch (error) {
       console.error('Pitch deck submission error:', error);
-      setSubmitError('Submission failed. Please try again or contact support.');
+      // Surface the real error message from the service / API instead of a generic string
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : 'Submission failed. Please try again or contact support.';
+      setSubmitError(message);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Success screen
+  // ── Success screen ──────────────────────────────────────────────
   if (submitSuccess) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50/60 flex items-center justify-center p-6">
@@ -159,7 +164,7 @@ export default function PitchDeckForm() {
           </div>
 
           <a
-            href="/"
+            href="/futurentrepreneurship26"
             className="inline-block bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-12 py-4 rounded-xl font-bold hover:from-emerald-700 hover:to-teal-700 transition shadow-xl hover:shadow-2xl text-lg"
           >
             Return to Home
@@ -169,7 +174,7 @@ export default function PitchDeckForm() {
     );
   }
 
-  // Form page
+  // ── Form page ───────────────────────────────────────────────────
   const inputClass = (field: string) =>
     `w-full px-5 py-4 border rounded-xl transition focus:ring-2 focus:outline-none text-gray-900 placeholder-gray-400 ${
       errors[field] ? 'border-red-400 focus:ring-red-200' : 'border-gray-300 focus:ring-emerald-300 focus:border-emerald-500'
