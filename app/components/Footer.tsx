@@ -211,6 +211,9 @@ const Footer: React.FC = () => {
             <Link href="/terms-of-service" className="hover:text-yellow-400 transition-colors duration-300">
               Terms of Service
             </Link>
+            <Link href="/futurentrepreneurship26" className="hover:text-yellow-400 transition-colors duration-300">
+              Events
+            </Link>/futurentrepreneurship26
           </div>
         </div>
       </div>

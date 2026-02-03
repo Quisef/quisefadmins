@@ -137,7 +137,7 @@ export default function EventPopup() {
               </p>
 
               <a
-                href="/futurentrpreneurship26"
+                href="/futurentrepreneurship26"
                 className={`
                   inline-block bg-gradient-to-r from-blue-600 via-blue-500 to-blue-600 
                   text-white px-10 py-5 rounded-full font-bold text-lg
