@@ -123,7 +123,7 @@ export default function EventPopup() {
             {/* Content */}
             <div className="p-8 pb-12 text-center">
               <div className="mx-auto mb-6 w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-xl animate-pulse-slow">
-                <span className="text-white text-4xl drop-shadow-md">🎉</span>
+                <span className="text-white text-4xl drop-shadow-md">💡</span>
               </div>
 
               <h2 className="text-3xl font-extrabold text-blue-900 mb-4 tracking-tight">
@@ -133,7 +133,7 @@ export default function EventPopup() {
               <p className="text-gray-500 mb-8 leading-relaxed text-lg">
                 Our <strong>Entrepreneurship Training</strong> is coming <br />
                 <span className="font-bold text-blue-500">February 9, 2026</span>!<br />
-                Early bird tickets → <strong className="text-rose-600">30% OFF</strong> (48 hours only!)
+                Early bird tickets → <strong className="text-rose-600">30% OFF</strong> (5 days only!)
               </p>
 
               <a

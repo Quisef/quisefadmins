@@ -213,7 +213,7 @@ const Footer: React.FC = () => {
             </Link>
             <Link href="/futurentrepreneurship26" className="hover:text-yellow-400 transition-colors duration-300">
               Events
-            </Link>/futurentrepreneurship26
+            </Link>
           </div>
         </div>
       </div>
