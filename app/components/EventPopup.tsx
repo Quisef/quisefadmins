@@ -62,8 +62,8 @@ export default function EventPopup() {
         onClick={handleRestore}
         className={`
           fixed bottom-6 right-6 z-50 w-16 h-16 
-          bg-gradient-to-br from-indigo-400 to-blue-500 
-          rounded-full shadow-2xl shadow-indigo-500/40 
+          bg-gradient-to-br from-blue-400 to-blue-500 
+          rounded-full shadow-2xl shadow-blue-500/40 
           flex items-center justify-center cursor-pointer
           animate-bounce-slow hover:scale-110 transition-transform duration-300
         `}
@@ -82,7 +82,7 @@ export default function EventPopup() {
     <>
       {/* Backdrop */}
       <div
-        className={`fixed inset-0 z-40 bg-black/30 backdrop-blur-sm transition-opacity duration-700 ${
+        className={`fixed inset-0 z-40 bg-black/30 backdrop-blur-sm transition-opacity duration-500 ${
           isClosing ? 'opacity-0' : 'opacity-100'
         }`}
         onClick={handleClose}
@@ -94,7 +94,7 @@ export default function EventPopup() {
           fixed top-[8%] sm:top-[10%] right-[4%] sm:right-[5%] z-50 
           max-w-xs sm:max-w-sm w-[92%] sm:w-full
           origin-top-right
-          transition-all duration-700 ease-out
+          transition-all duration-500 ease-out
           ${isClosing
             ? 'opacity-0 scale-50 -translate-x-40 -translate-y-20 rotate-6'
             : 'opacity-100 scale-100 translate-x-0 translate-y-0 rotate-0'
@@ -106,10 +106,10 @@ export default function EventPopup() {
           {/* Blob content */}
           <div
             className={`
-              bg-gradient-to-br from-indigo-100/90 via-white/90 to-blue-100/90 
-              border border-indigo-200/60 
+              bg-gradient-to-br from-blue-100/90 via-white/90 to-blue-100/90 
+              border border-blue-200/60 
               rounded-[42%_58%_64%_36%_/_48%_32%_68%_52%] 
-              shadow-2xl shadow-indigo-400/30 overflow-hidden backdrop-blur-lg
+              shadow-2xl shadow-blue-400/30 overflow-hidden backdrop-blur-lg
               transition-transform duration-300 hover:scale-[1.02]
             `}
             style={{
@@ -122,28 +122,28 @@ export default function EventPopup() {
 
             {/* Content */}
             <div className="p-8 pb-12 text-center">
-              <div className="mx-auto mb-6 w-20 h-20 rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center shadow-xl animate-pulse-slow">
+              <div className="mx-auto mb-6 w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-xl animate-pulse-slow">
                 <span className="text-white text-4xl drop-shadow-md">🎉</span>
               </div>
 
-              <h2 className="text-3xl font-extrabold text-indigo-900 mb-4 tracking-tight">
+              <h2 className="text-3xl font-extrabold text-blue-900 mb-4 tracking-tight">
                 Big Event Alert! 🚀
               </h2>
 
-              <p className="text-gray-700 mb-8 leading-relaxed text-lg">
+              <p className="text-gray-500 mb-8 leading-relaxed text-lg">
                 Our <strong>Entrepreneurship Training</strong> is coming <br />
-                <span className="font-bold text-indigo-700">March 15, 2026</span>!<br />
+                <span className="font-bold text-blue-500">February 9, 2026</span>!<br />
                 Early bird tickets → <strong className="text-rose-600">30% OFF</strong> (48 hours only!)
               </p>
 
               <a
                 href="/futurentrpreneurship26"
                 className={`
-                  inline-block bg-gradient-to-r from-indigo-600 via-indigo-500 to-blue-600 
+                  inline-block bg-gradient-to-r from-blue-600 via-blue-500 to-blue-600 
                   text-white px-10 py-5 rounded-full font-bold text-lg
-                  shadow-2xl shadow-indigo-500/40 
-                  hover:shadow-2xl hover:shadow-indigo-600/50 
-                  hover:from-indigo-700 hover:to-blue-700 
+                  shadow-2xl shadow-blue-500/40 
+                  hover:shadow-2xl hover:shadow-blue-600/50 
+                  hover:from-blue-500 hover:to-blue-500 
                   transition-all duration-300 transform hover:-translate-y-2 active:scale-95
                 `}
               >
@@ -157,9 +157,9 @@ export default function EventPopup() {
             <button
               onClick={handleMinimize}
               className="
-                bg-white/90 backdrop-blur-md text-gray-700 
+                bg-white/90 backdrop-blur-md text-gray-500 
                 p-2.5 rounded-full shadow-md hover:shadow-lg 
-                hover:text-indigo-700 hover:bg-indigo-50/90 
+                hover:text-blue-400 hover:bg-blue-50/90 
                 transition-all duration-200 transform hover:scale-110
               "
               aria-label="Minimize popup"
@@ -170,7 +170,7 @@ export default function EventPopup() {
             <button
               onClick={handleClose}
               className="
-                bg-white/90 backdrop-blur-md text-gray-700 
+                bg-white/90 backdrop-blur-md text-gray-500 
                 p-2.5 rounded-full shadow-md hover:shadow-lg 
                 hover:text-rose-600 hover:bg-rose-50/90 
                 transition-all duration-200 transform hover:scale-110

@@ -13,8 +13,50 @@ import {
 } from '@/lib/registrationService';
 
 // ────────────────────────────────────────────────
-// Static data – hoisted so they are never
-// recreated on every render.
+// Metadata for SEO (Next.js App Router)
+const metadata = {
+  title: 'FuturenTrepeneurship NYSC 2026 – Entrepreneurship Training & Funding Program Nigeria',
+  description: 'Register now for FuturenTrepeneurship NYSC Cohort 2026 – hybrid entrepreneurship training, mentorship, seed funding, grants & alumni network by Quiet Shelter Empowerment Foundation. Limited slots – Feb 10 to March 9, 2026.',
+  keywords: [
+    'NYSC entrepreneurship program 2026',
+    'NYSC business training Nigeria',
+    'youth entrepreneurship Nigeria',
+    'seed funding NYSC',
+    'entrepreneurship mentorship Nigeria',
+    'FuturenTrepeneurship registration',
+    'QuiSEF entrepreneurship program',
+    'NYSC corps members business',
+    'grant eligible training 2026'
+  ].join(', '),
+  openGraph: {
+    title: 'FuturenTrepeneurship NYSC 2026 – Start Your Entrepreneurial Journey',
+    description: 'Join the NYSC 2026 cohort for world-class entrepreneurship training, mentorship, pitch competitions & funding opportunities. Register before slots run out!',
+    url: 'https://quietshelter.org/futurentrepreneurship26', // ← replace with your actual domain
+    siteName: 'FuturenTrepeneurship',
+    images: [
+      {
+        url: '/og-image.jpg', // ← place a real 1200×630 image in /public/
+        width: 1200,
+        height: 630,
+        alt: 'FuturenTrepeneurship NYSC 2026 – Youth Empowerment Program',
+      },
+    ],
+    locale: 'en_NG',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'FuturenTrepeneurship NYSC 2026 – Entrepreneurship & Funding',
+    description: 'Empowering Nigerian youth with training, mentorship & seed funding. Register today!',
+    images: ['/og-image.jpg'],
+  },
+  alternates: {
+    canonical: 'https://quietshelter.org/futurentrepreneurship26',
+  },
+};
+
+// ────────────────────────────────────────────────
+// Static data
 // ────────────────────────────────────────────────
 const TESTIMONIALS = [
   { name: 'Chioma Adeleke',   batch: '2025 Batch A', quote: 'This program turned my business idea into a funded reality. The mentorship was world-class.',   business: 'Tech Solutions Ltd' },
@@ -118,8 +160,8 @@ function TestimonialCarousel() {
         {TESTIMONIALS.map((t, i) => (
           <div
             key={i}
-            className={`absolute inset-0 transition-all duration-700 ${
-              i === index ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-10 pointer-events-none'
+            className={`absolute inset-0 transition-all duration-700 ease-in-out ${
+              i === index ? 'opacity-100 translate-x-0 scale-100' : 'opacity-0 translate-x-10 scale-95 pointer-events-none'
             }`}
           >
             <div className="text-center max-w-3xl mx-auto px-4">
@@ -138,7 +180,7 @@ function TestimonialCarousel() {
         </button>
         <div className="flex gap-3">
           {TESTIMONIALS.map((_, i) => (
-            <button key={i} onClick={() => setIndex(i)} className={`h-3 rounded-full transition-all ${i === index ? 'w-10 bg-white shadow' : 'w-3 bg-white/50'}`} aria-label={`Slide ${i + 1}`} />
+            <button key={i} onClick={() => setIndex(i)} className={`h-3 rounded-full transition-all ${i === index ? 'w-10 bg-white shadow-lg' : 'w-3 bg-white/50'}`} aria-label={`Slide ${i + 1}`} />
           ))}
         </div>
         <button onClick={() => setIndex(i => (i + 1) % TESTIMONIALS.length)} className="bg-white/20 hover:bg-white/30 p-3 rounded-full transition backdrop-blur-sm" aria-label="Next">
@@ -205,7 +247,7 @@ function CategoryCard({ category, onSelect }: { category: Category; onSelect: ()
 }
 
 // ────────────────────────────────────────────────
-// Main Page
+// Main Component
 // ────────────────────────────────────────────────
 export default function FuturenTrepeneurship() {
   const [selectedCategory, setSelectedCategory]         = useState<Category | null>(null);
@@ -257,7 +299,6 @@ export default function FuturenTrepeneurship() {
         newUniqueId
       );
 
-      // uniqueId forwarded → /api/send-confirmation renders it in the email
       const emailSent = await sendConfirmationEmail(
         formData.email, formData.fullName, newUniqueId,
         selectedCategory.name, selectedCategory.price
@@ -300,13 +341,11 @@ export default function FuturenTrepeneurship() {
           <h2 className="text-4xl font-bold text-gray-900 mb-4">Registration Confirmed!</h2>
           <p className="text-lg text-gray-600 mb-8">Thank you for joining FuturenTrepeneurship NYSC 2026</p>
 
-          {/* Registration ID */}
           <div className="bg-gradient-to-br from-emerald-50 to-teal-50 border-2 border-emerald-200 rounded-2xl p-8 mb-8">
             <p className="text-sm text-gray-600 mb-3 uppercase tracking-wider font-semibold">Your Registration ID</p>
             <p className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-600">{uniqueId}</p>
           </div>
 
-          {/* Summary */}
           <div className="bg-teal-50 rounded-2xl p-7 mb-8 text-left border border-teal-100">
             <h3 className="font-bold text-gray-900 mb-4">Summary</h3>
             <div className="space-y-3 text-sm text-gray-700">
@@ -322,7 +361,6 @@ export default function FuturenTrepeneurship() {
             Keep your ID safe — you'll need it to submit your pitch deck.
           </p>
 
-          {/* Pitch-deck CTA */}
           <div className="mb-6">
             <a
               href={pitchUrl}
@@ -352,23 +390,27 @@ export default function FuturenTrepeneurship() {
         <div className="max-w-3xl mx-auto">
           <button
             onClick={() => { setShowForm(false); setSelectedCategory(null); setSubmitError(''); }}
-            className="mb-8 text-emerald-700 hover:text-emerald-800 font-semibold flex items-center gap-2 transition"
+            className="mb-8 text-emerald-700 hover:text-emerald-800 font-semibold flex items-center gap-2 transition hover:underline"
           >
             ← Back to Categories
           </button>
 
-          <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl p-8 md:p-10 border border-gray-100/70">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">Complete Your Registration</h2>
-            <p className="text-gray-600 mb-10">Selected plan: <strong className="text-emerald-700">{selectedCategory.name}</strong></p>
+          <div className="bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl p-8 md:p-12 border border-gray-100/80">
+            <h2 className="text-4xl md:text-5xl font-black bg-gradient-to-r from-emerald-700 to-teal-700 bg-clip-text text-transparent mb-4">
+              Complete Your Registration
+            </h2>
+            <p className="text-xl text-gray-700 mb-10">
+              Selected plan: <strong className="text-emerald-700 font-bold">{selectedCategory.name}</strong>
+            </p>
 
             {submitError && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-5 py-4 rounded-xl mb-6">{submitError}</div>
+              <div className="bg-red-50 border border-red-300 text-red-800 px-6 py-5 rounded-2xl mb-8 shadow-sm">{submitError}</div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-7">
+            <form onSubmit={handleSubmit} className="space-y-8">
               {fields.map(field => (
                 <div key={field}>
-                  <label className="block text-sm font-medium text-gray-700 mb-2 capitalize">
+                  <label className="block text-base font-semibold text-gray-800 mb-3 capitalize">
                     {field.replace(/([A-Z])/g, ' $1')} *
                   </label>
                   <input
@@ -376,27 +418,37 @@ export default function FuturenTrepeneurship() {
                     name={field}
                     value={formData[field]}
                     onChange={handleChange}
-                    className={`w-full px-5 py-4 border rounded-xl transition focus:ring-2 focus:outline-none ${
-                      errors[field] ? 'border-red-400 focus:ring-red-200' : 'border-gray-300 focus:ring-emerald-300 focus:border-emerald-500'
+                    className={`w-full px-6 py-5 border-2 rounded-2xl transition-all focus:ring-4 focus:outline-none text-gray-900 text-lg placeholder-gray-500 shadow-sm ${
+                      errors[field]
+                        ? 'border-red-400 focus:ring-red-200 focus:border-red-500'
+                        : 'border-gray-300 focus:ring-emerald-300 focus:border-emerald-500 hover:border-emerald-400'
                     }`}
-                    placeholder={field === 'areaOfInterest' ? 'e.g. Agriculture, IT, Marketing, Media & Content Creation, Trading…' : ''}
+                    placeholder={
+                      field === 'areaOfInterest'
+                        ? 'e.g. Agriculture, Tech, Fashion, Content Creation, Trading…'
+                        : ''
+                    }
                   />
-                  {errors[field] && <p className="mt-1.5 text-sm text-red-600">{errors[field]}</p>}
+                  {errors[field] && <p className="mt-2 text-base text-red-600 font-medium">{errors[field]}</p>}
                 </div>
               ))}
 
-              <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl p-6 border border-emerald-100 mt-8">
-                <p className="text-sm font-medium text-gray-700 mb-2">Selected Plan</p>
-                <p className="text-2xl font-bold text-emerald-700">{selectedCategory.name}</p>
-                <p className="text-3xl font-extrabold text-gray-900 mt-2 tracking-tight">{selectedCategory.price}</p>
+              <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl p-8 border border-emerald-200 shadow-inner mt-10">
+                <p className="text-lg font-semibold text-gray-800 mb-3">Your Selected Plan</p>
+                <p className="text-3xl font-black text-emerald-800">{selectedCategory.name}</p>
+                <p className="text-5xl font-extrabold text-gray-950 mt-3 tracking-tight">{selectedCategory.price}</p>
               </div>
 
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white py-5 rounded-xl font-bold text-lg transition-all shadow-lg hover:shadow-xl disabled:opacity-70 flex items-center justify-center gap-3"
+                className="w-full bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white py-6 rounded-2xl font-bold text-xl transition-all shadow-2xl hover:shadow-3xl disabled:opacity-60 flex items-center justify-center gap-4 transform hover:scale-[1.02] active:scale-95"
               >
-                {isSubmitting ? (<><Loader2 className="w-6 h-6 animate-spin" /> Processing…</>) : 'Confirm Registration'}
+                {isSubmitting ? (
+                  <><Loader2 className="w-8 h-8 animate-spin" /> Processing…</>
+                ) : (
+                  <>Confirm & Secure My Spot →</>
+                )}
               </button>
             </form>
           </div>
@@ -405,35 +457,54 @@ export default function FuturenTrepeneurship() {
     );
   }
 
-  // ─── LANDING PAGE ────────────────────────────
+  // ─── MAIN LANDING PAGE ────────────────────────────
   return (
-    <div className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-teal-50/30">
-      {/* Hero */}
-      <div className="relative bg-gradient-to-br from-emerald-700 via-teal-700 to-blue-800 text-white py-24 md:py-32 px-5 overflow-hidden">
-        <div className="max-w-6xl mx-auto text-center relative z-10">
-          <h1 className="text-5xl md:text-7xl font-black mb-5 tracking-tight">FuturenTrepeneurship</h1>
-          <p className="text-2xl md:text-3xl mb-5 text-teal-100">Youth Empowerment & Development Program</p>
-          <p className="text-xl md:text-2xl mb-10 text-white/90">NYSC Cohort • 2026</p>
+    <div className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-teal-50/40">
+      {/* Hero – cinematic version */}
+      <div className="relative bg-gradient-to-br from-emerald-800 via-teal-800 to-blue-950 text-white py-32 md:py-48 px-5 overflow-hidden">
+        <div className="absolute inset-0 bg-black/20" />
+        <div className="max-w-7xl mx-auto text-center relative z-10">
+          <h1 className="text-6xl md:text-8xl font-black mb-6 tracking-tighter bg-gradient-to-r from-teal-200 via-emerald-100 to-white bg-clip-text text-transparent drop-shadow-2xl animate-pulse-slow">
+            FuturenTrepeneurship
+          </h1>
+          <p className="text-3xl md:text-5xl mb-6 font-semibold text-teal-100 drop-shadow-lg">
+            NYSC Youth Empowerment & Entrepreneurship Program 2026
+          </p>
+          <p className="text-2xl md:text-3xl mb-12 text-white/90 max-w-4xl mx-auto">
+            Turn your idea into a funded reality with mentorship, training, grants & lifelong network.
+          </p>
 
-          <div className="inline-block bg-white/15 backdrop-blur-xl rounded-2xl px-8 py-5 mb-12 border border-white/20">
-            <p className="text-sm uppercase tracking-wider font-semibold mb-1">Organized by</p>
-            <p className="text-2xl font-bold">Quiet Shelter Empowerment Foundation (QuiSEF)</p>
+          <div className="inline-block bg-black/30 backdrop-blur-2xl rounded-3xl px-10 py-6 mb-14 border border-white/20 shadow-2xl">
+            <p className="text-xl uppercase tracking-widest font-bold mb-2 text-teal-200">Organized by</p>
+            <p className="text-3xl font-extrabold text-white">Quiet Shelter Empowerment Foundation</p>
           </div>
 
-          <div className="mb-10">
-            <div className="flex items-center justify-center gap-4 mb-6">
-              <Clock className="w-8 h-8" />
-              <h2 className="text-2xl md:text-3xl font-bold">Registration Closes In</h2>
+          <div className="mb-16">
+            <p className="text-3xl font-bold text-amber-300 mb-6 animate-bounce-slow">
+              Limited Slots – Register Before March 9, 2026!
+            </p>
+            <a
+              href="#categories"
+              className="inline-flex items-center gap-4 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white px-12 py-6 rounded-full font-extrabold text-2xl shadow-2xl hover:shadow-3xl transition-all transform hover:scale-105 active:scale-95 ring-4 ring-amber-400/40"
+            >
+              Claim Your Spot Now <ArrowRight className="w-10 h-10" />
+            </a>
+          </div>
+
+          <div className="mb-12">
+            <div className="flex items-center justify-center gap-6 mb-8">
+              <Clock className="w-12 h-12 animate-pulse" />
+              <h2 className="text-4xl md:text-5xl font-black">Registration Closes In</h2>
             </div>
             <CountdownTimer targetDate="2026-03-09T23:59:59" />
           </div>
         </div>
       </div>
 
-      <main className="max-w-6xl mx-auto px-5 py-16 md:py-20">
+      <main className="max-w-7xl mx-auto px-5 py-20 md:py-28">
         {/* Overview */}
-        <section className="bg-white rounded-3xl shadow-xl p-8 md:p-12 mb-16 border border-gray-100">
-          <h2 className="text-4xl font-bold text-gray-900 mb-8">Program Overview</h2>
+        <section className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl p-10 md:p-16 mb-20 border border-gray-100/80">
+          <h2 className="text-5xl font-black text-gray-900 mb-10 text-center">Unlock Your Entrepreneurial Future</h2>
           <p className="text-lg text-gray-700 leading-relaxed mb-10">
             Empowering Nigerian youth — especially NYSC corps members — with world-class entrepreneurship training, mentorship, funding access and lifelong networking to build sustainable businesses.
           </p>
@@ -466,9 +537,11 @@ export default function FuturenTrepeneurship() {
         <TestimonialCarousel />
 
         {/* Categories */}
-        <section className="my-20">
-          <h2 className="text-4xl md:text-5xl font-bold text-center text-gray-900 mb-14">Choose Your Path</h2>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <section id="categories" className="my-24 scroll-mt-20">
+          <h2 className="text-5xl md:text-6xl font-black text-center text-gray-900 mb-16 bg-gradient-to-r from-emerald-700 to-teal-700 bg-clip-text text-transparent">
+            Choose Your Path to Success
+          </h2>
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-10">
             {CATEGORIES.map(cat => (
               <CategoryCard
                 key={cat.id}
@@ -482,6 +555,19 @@ export default function FuturenTrepeneurship() {
             ))}
           </div>
         </section>
+
+        {/* Final big CTA */}
+        <div className="text-center my-20">
+          <p className="text-4xl font-bold text-emerald-800 mb-8">
+            Ready to Build Your Future?
+          </p>
+          <a
+            href="#categories"
+            className="inline-flex items-center gap-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white px-16 py-8 rounded-full font-extrabold text-3xl shadow-2xl hover:shadow-3xl transition-all transform hover:scale-105 active:scale-95 ring-8 ring-emerald-400/30"
+          >
+            Secure Your Registration Now <Sparkles className="w-10 h-10 animate-pulse" />
+          </a>
+        </div>
 
         {/* Partners */}
         <section className="bg-white rounded-3xl shadow-xl p-8 md:p-12 mb-16 border border-gray-100">
@@ -523,10 +609,10 @@ export default function FuturenTrepeneurship() {
         </section>
       </main>
 
-      <footer className="bg-gradient-to-br from-gray-900 to-gray-950 text-white py-12 px-5 mt-20">
-        <div className="max-w-6xl mx-auto text-center">
-          <p className="text-gray-400">© 2026 Quiet Shelter Empowerment Foundation (QuiSEF)</p>
-          <p className="text-gray-400 mt-3">Empowering the next generation of Nigerian entrepreneurs</p>
+      <footer className="bg-gradient-to-br from-gray-950 to-black text-white py-16 px-5 mt-24">
+        <div className="max-w-7xl mx-auto text-center">
+          <p className="text-gray-400 text-lg">© 2026 Quiet Shelter Empowerment Foundation (QuiSEF)</p>
+          <p className="text-gray-300 mt-4 text-xl">Empowering Nigeria's Next Generation of Entrepreneurs</p>
         </div>
       </footer>
     </div>
