@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import {
   Check, X, Award, BookOpen, TrendingUp, Calendar, Clock,
   ChevronLeft, ChevronRight, Sparkles, ArrowRight, Loader2,
-  ChevronDown, Users
+  ChevronDown, Users, Rocket, DollarSign, Network, Lightbulb, Target
 } from 'lucide-react';
 import {
   generateUniqueId,
@@ -58,33 +58,60 @@ const metadata = {
 // ────────────────────────────────────────────────
 // Static data
 // ────────────────────────────────────────────────
-const TESTIMONIALS = [
-  { name: 'Chioma Adeleke',   batch: '2025 Batch A', quote: 'This program turned my business idea into a funded reality. The mentorship was world-class.',   business: 'Tech Solutions Ltd' },
-  { name: 'Ibrahim Mohammed', batch: '2025 Batch B', quote: 'The seed funding and guidance helped launch my agribusiness successfully.',                      business: 'Green Farms Nigeria' },
-  { name: 'Blessing Okafor',  batch: '2025 Batch A', quote: 'The network and connections opened doors I never imagined possible.',                           business: 'Fashion Forward'     },
+const BENEFITS = [
+  { 
+    title: 'Transform Your Business Idea', 
+    description: 'Turn your entrepreneurial vision into a viable, fundable business with our comprehensive training modules and expert mentorship.',
+    icon: 'rocket'
+  },
+  { 
+    title: 'Access to Funding & Grants', 
+    description: 'Compete for seed funding, grants, and investment opportunities through our business plan competition and investor network.',
+    icon: 'money'
+  },
+  { 
+    title: 'Lifetime Network & Community', 
+    description: 'Join a powerful alumni network of entrepreneurs, mentors, and industry leaders who will support your journey for years to come.',
+    icon: 'network'
+  },
+  { 
+    title: 'Industry-Ready Skills', 
+    description: 'Master essential business skills including financial management, marketing, operations, and strategic planning from seasoned professionals.',
+    icon: 'skills'
+  },
+  { 
+    title: 'Personalized Mentorship', 
+    description: 'Get one-on-one guidance from successful entrepreneurs who understand your challenges and can help you navigate obstacles.',
+    icon: 'mentor'
+  },
+  { 
+    title: 'Launch with Confidence', 
+    description: 'Graduate with a complete business plan, validated strategy, and the confidence to launch and scale your venture successfully.',
+    icon: 'launch'
+  },
 ];
 
 const CATEGORIES = [
   {
-    id: 'fully-funded', name: 'Fully Funded Registration', type: 'Competitive', slots: 100, price: '₦20,000',
+    id: 'fully-funded', name: 'Fully Funded Registration', type: 'Competitive', slots: 100, price: '₦50,000', originalPrice: '₦100,000',
     color: 'bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-200', badge: 'bg-emerald-600',
     benefits: ['Full access to training modules','Dedicated mentorship program','Business plan competition → Grant eligible','Lifetime Alumni Network access','Graduation ceremony (transport + accommodation)'],
     notIncluded: [] as string[],
   },
   {
-    id: 'partially-funded', name: 'Partially Funded Registration', type: 'Competitive', slots: 100, price: '₦20,000',
+    id: 'partially-funded', name: 'Partially Funded Registration', type: 'Competitive', slots: 100, price: '₦50,000', originalPrice: '₦100,000',
     color: 'bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200', badge: 'bg-blue-600',
     benefits: ['Full access to training modules','Dedicated mentorship program','Business plan competition → Seed funding','Lifetime Alumni Network access','Graduation ceremony attendance'],
     notIncluded: ['Transportation to graduation ceremony','Accommodation during graduation'],
   },
   {
-    id: 'basic', name: 'Basic Registration', type: 'Standard', slots: 100, price: '₦10,000',
+    id: 'basic', name: 'Basic Registration', type: 'Standard', slots: 100, price: '₦20,000', originalPrice: '₦40,000',
     color: 'bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200', badge: 'bg-purple-600',
     benefits: ['Core training modules','Alumni Network access','Graduation ceremony attendance','Business plan competition (performance-based)'],
     notIncluded: ['Dedicated mentorship','Transportation & accommodation for graduation'],
   },
   {
-    id: 'self-funded', name: 'Self-Funded Registration', type: 'Grantee Selection', slots: 100, price: '₦20,000',
+    id: 'self-funded', name: 'Self-Funded Registration', type: 'Grantee Selection', slots: 100, price: '₦70,000', originalPrice: '₦500,000',
     color: 'bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200', badge: 'bg-amber-600',
     benefits: ['Full access to training modules','Dedicated mentorship program','Business plan competition → Grant eligible','Lifetime Alumni Network access','Graduation ceremony attendance'],
     notIncluded: ['Transportation to graduation ceremony','Accommodation during graduation'],
@@ -142,50 +169,73 @@ function CountdownTimer({ targetDate }: { targetDate: string }) {
 }
 
 // ────────────────────────────────────────────────
-// Testimonial Carousel
+// Benefits Carousel
 // ────────────────────────────────────────────────
-function TestimonialCarousel() {
+function BenefitsCarousel() {
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
-    const timer = setInterval(() => setIndex(prev => (prev + 1) % TESTIMONIALS.length), 6000);
+    const timer = setInterval(() => setIndex(prev => (prev + 1) % BENEFITS.length), 6000);
     return () => clearInterval(timer);
   }, []);
 
+  const getIcon = (iconType: string) => {
+    const iconProps = { className: "w-14 h-14 mx-auto mb-6 text-amber-300" };
+    switch(iconType) {
+      case 'rocket': return <Rocket {...iconProps} />;
+      case 'money': return <DollarSign {...iconProps} />;
+      case 'network': return <Users {...iconProps} />;
+      case 'skills': return <BookOpen {...iconProps} />;
+      case 'mentor': return <Award {...iconProps} />;
+      case 'launch': return <Target {...iconProps} />;
+      default: return <Sparkles {...iconProps} />;
+    }
+  };
+
   return (
     <div className="relative bg-gradient-to-br from-emerald-700 to-teal-800 rounded-3xl p-8 md:p-12 text-white overflow-hidden shadow-2xl">
-      <h2 className="text-3xl md:text-4xl font-extrabold mb-10 text-center">Success Stories</h2>
+      {/* Background Image Overlay */}
+      <div 
+        className="absolute inset-0 opacity-10 bg-cover bg-center"
+        style={{
+          backgroundImage: "url('https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=2070&auto=format&fit=crop')",
+        }}
+      />
+      <div className="absolute inset-0 bg-gradient-to-br from-emerald-900/80 to-teal-900/80" />
+      
+      <div className="relative z-10">
+        <h2 className="text-3xl md:text-4xl font-extrabold mb-10 text-center">Why Join FuturenTrepeneurship?</h2>
 
-      <div className="relative min-h-[220px]">
-        {TESTIMONIALS.map((t, i) => (
-          <div
-            key={i}
-            className={`absolute inset-0 transition-all duration-700 ease-in-out ${
-              i === index ? 'opacity-100 translate-x-0 scale-100' : 'opacity-0 translate-x-10 scale-95 pointer-events-none'
-            }`}
-          >
-            <div className="text-center max-w-3xl mx-auto px-4">
-              <Sparkles className="w-14 h-14 mx-auto mb-6 text-amber-300 animate-pulse" />
-              <p className="text-xl md:text-2xl italic mb-8 leading-relaxed">"{t.quote}"</p>
-              <p className="text-xl font-bold">{t.name}</p>
-              <p className="text-white/80 mt-1">{t.business} • {t.batch}</p>
+        <div className="relative min-h-[280px]">
+          {BENEFITS.map((benefit, i) => (
+            <div
+              key={i}
+              className={`absolute inset-0 transition-all duration-700 ease-in-out ${
+                i === index ? 'opacity-100 translate-x-0 scale-100' : 'opacity-0 translate-x-10 scale-95 pointer-events-none'
+              }`}
+            >
+              <div className="text-center max-w-3xl mx-auto px-4">
+                {getIcon(benefit.icon)}
+                <h3 className="text-2xl md:text-3xl font-bold mb-6">{benefit.title}</h3>
+                <p className="text-lg md:text-xl leading-relaxed text-white/90">{benefit.description}</p>
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="flex justify-center items-center gap-6 mt-8">
-        <button onClick={() => setIndex(i => (i - 1 + TESTIMONIALS.length) % TESTIMONIALS.length)} className="bg-white/20 hover:bg-white/30 p-3 rounded-full transition backdrop-blur-sm" aria-label="Previous">
-          <ChevronLeft className="w-6 h-6" />
-        </button>
-        <div className="flex gap-3">
-          {TESTIMONIALS.map((_, i) => (
-            <button key={i} onClick={() => setIndex(i)} className={`h-3 rounded-full transition-all ${i === index ? 'w-10 bg-white shadow-lg' : 'w-3 bg-white/50'}`} aria-label={`Slide ${i + 1}`} />
           ))}
         </div>
-        <button onClick={() => setIndex(i => (i + 1) % TESTIMONIALS.length)} className="bg-white/20 hover:bg-white/30 p-3 rounded-full transition backdrop-blur-sm" aria-label="Next">
-          <ChevronRight className="w-6 h-6" />
-        </button>
+
+        <div className="flex justify-center items-center gap-6 mt-8">
+          <button onClick={() => setIndex(i => (i - 1 + BENEFITS.length) % BENEFITS.length)} className="bg-white/20 hover:bg-white/30 p-3 rounded-full transition backdrop-blur-sm" aria-label="Previous">
+            <ChevronLeft className="w-6 h-6" />
+          </button>
+          <div className="flex gap-3">
+            {BENEFITS.map((_, i) => (
+              <button key={i} onClick={() => setIndex(i)} className={`h-3 rounded-full transition-all ${i === index ? 'w-10 bg-white shadow-lg' : 'w-3 bg-white/50'}`} aria-label={`Slide ${i + 1}`} />
+            ))}
+          </div>
+          <button onClick={() => setIndex(i => (i + 1) % BENEFITS.length)} className="bg-white/20 hover:bg-white/30 p-3 rounded-full transition backdrop-blur-sm" aria-label="Next">
+            <ChevronRight className="w-6 h-6" />
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -195,6 +245,14 @@ function TestimonialCarousel() {
 // Category Card
 // ────────────────────────────────────────────────
 function CategoryCard({ category, onSelect }: { category: Category; onSelect: () => void }) {
+  const calculateDiscount = () => {
+    const original = parseFloat(category.originalPrice.replace(/[₦,]/g, ''));
+    const current = parseFloat(category.price.replace(/[₦,]/g, ''));
+    return Math.round(((original - current) / original) * 100);
+  };
+  
+  const discountPercentage = calculateDiscount();
+  
   return (
     <div className={`${category.color} border-2 rounded-3xl p-7 transition-all duration-300 hover:shadow-2xl hover:scale-[1.03] hover:-translate-y-2 group flex flex-col`}>
       <div className="flex items-start justify-between mb-5">
@@ -203,7 +261,11 @@ function CategoryCard({ category, onSelect }: { category: Category; onSelect: ()
           <span className={`inline-block ${category.badge} text-white text-xs px-4 py-1.5 rounded-full font-semibold tracking-wide`}>{category.type}</span>
         </div>
         <div className="text-right">
-          <p className="text-xl font-extrabold text-gray-900 tracking-tight">{category.price}</p>
+          <p className="text-sm text-gray-500 line-through mb-1">{category.originalPrice}</p>
+          <div className="flex items-center gap-2">
+            <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-md font-bold">-{discountPercentage}%</span>
+            <p className="text-xl font-extrabold text-gray-900 tracking-tight">{category.price}</p>
+          </div>
           <p className="text-sm text-gray-600 mt-1">{category.slots} slots</p>
         </div>
       </div>
@@ -436,7 +498,10 @@ export default function FuturenTrepeneurship() {
               <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl p-8 border border-emerald-200 shadow-inner mt-10">
                 <p className="text-lg font-semibold text-gray-800 mb-3">Your Selected Plan</p>
                 <p className="text-3xl font-black text-emerald-800">{selectedCategory.name}</p>
-                <p className="text-5xl font-extrabold text-gray-950 mt-3 tracking-tight">{selectedCategory.price}</p>
+                <div className="mt-3 flex items-center gap-3">
+                  <p className="text-2xl text-gray-500 line-through">{selectedCategory.originalPrice}</p>
+                  <p className="text-5xl font-extrabold text-gray-950 tracking-tight">{selectedCategory.price}</p>
+                </div>
               </div>
 
               <button
@@ -534,7 +599,7 @@ export default function FuturenTrepeneurship() {
           </div>
         </section>
 
-        <TestimonialCarousel />
+        <BenefitsCarousel />
 
         {/* Categories */}
         <section id="categories" className="my-24 scroll-mt-20">
@@ -557,16 +622,27 @@ export default function FuturenTrepeneurship() {
         </section>
 
         {/* Final big CTA */}
-        <div className="text-center my-20">
-          <p className="text-4xl font-bold text-emerald-800 mb-8">
-            Ready to Build Your Future?
-          </p>
-          <a
-            href="#categories"
-            className="inline-flex items-center gap-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white px-16 py-8 rounded-full font-extrabold text-3xl shadow-2xl hover:shadow-3xl transition-all transform hover:scale-105 active:scale-95 ring-8 ring-emerald-400/30"
-          >
-            Secure Your Registration Now <Sparkles className="w-10 h-10 animate-pulse" />
-          </a>
+        <div className="relative text-center my-20 rounded-3xl overflow-hidden p-16 md:p-24">
+          {/* Background Image */}
+          <div 
+            className="absolute inset-0 bg-cover bg-center"
+            style={{
+              backgroundImage: "url('https://images.unsplash.com/photo-1552664730-d307ca884978?q=80&w=2070&auto=format&fit=crop')",
+            }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-900/90 to-teal-900/90" />
+          
+          <div className="relative z-10">
+            <p className="text-4xl md:text-5xl font-bold text-white mb-8 drop-shadow-lg">
+              Ready to Build Your Future?
+            </p>
+            <a
+              href="#categories"
+              className="inline-flex items-center gap-4 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white px-16 py-8 rounded-full font-extrabold text-3xl shadow-2xl hover:shadow-3xl transition-all transform hover:scale-105 active:scale-95 ring-8 ring-amber-400/40"
+            >
+              Secure Your Registration Now <Sparkles className="w-10 h-10 animate-pulse" />
+            </a>
+          </div>
         </div>
 
         {/* Partners */}

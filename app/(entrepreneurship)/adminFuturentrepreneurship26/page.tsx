@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { collection, query, orderBy, limit, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, query, orderBy, limit, getDocs, deleteDoc, doc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Download, Search, Filter, Eye } from 'lucide-react';
+import { Download, Search, Filter, Eye, Trash2, AlertTriangle } from 'lucide-react';
 
 // ────────────────────────────────────────────────
 // Types
@@ -39,7 +39,7 @@ interface PitchDeck {
 // ────────────────────────────────────────────────
 // Pagination constants
 // ────────────────────────────────────────────────
-const PAGE_SIZE = 25;
+const PAGE_SIZE = 10;
 
 // ────────────────────────────────────────────────
 // Helper – download a CSV string as a file and
@@ -56,6 +56,61 @@ function downloadCSV(csv: string, name: string) {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url); // ← prevents memory leak
+}
+
+// ────────────────────────────────────────────────
+// Delete Confirmation Modal
+// ────────────────────────────────────────────────
+function DeleteModal({ 
+  isOpen, 
+  onClose, 
+  onConfirm, 
+  itemType, 
+  itemName 
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  itemType: string;
+  itemName: string;
+}) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-scale-up">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+            <AlertTriangle className="w-6 h-6 text-red-600" />
+          </div>
+          <h3 className="text-xl font-bold text-gray-900">Confirm Deletion</h3>
+        </div>
+        
+        <p className="text-gray-600 mb-6">
+          Are you sure you want to delete this {itemType}?
+          <br />
+          <strong className="text-gray-900">{itemName}</strong>
+          <br />
+          <span className="text-red-600 font-semibold">This action cannot be undone.</span>
+        </p>
+        
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 px-4 py-3 border border-gray-300 rounded-lg font-semibold text-gray-700 hover:bg-gray-50 transition"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold transition"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ────────────────────────────────────────────────
@@ -148,33 +203,66 @@ export default function AdminDashboard() {
   const [activeTab,     setActiveTab]     = useState<'registrations' | 'pitchDecks'>('registrations');
   const [searchTerm,    setSearchTerm]    = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
+  const [deleteModal,   setDeleteModal]   = useState<{ isOpen: boolean; type: 'registration' | 'pitch'; id: string; name: string } | null>(null);
+  const [deleting,      setDeleting]      = useState(false);
 
   // ── pagination state (one page counter per tab) ──
   const [regPage,   setRegPage]   = useState(1);
   const [pitchPage, setPitchPage] = useState(1);
 
   // ── load both collections once on mount ──────────
-  useEffect(() => {
-    (async () => {
-      try {
-        const [regSnap, pitchSnap] = await Promise.all([
-          getDocs(query(collection(db, 'registrations'),  orderBy('registrationDate', 'desc'), limit(500))),
-          getDocs(query(collection(db, 'pitch-decks'),    orderBy('submissionDate',   'desc'), limit(500))),
-        ]);
+  const loadData = async () => {
+    try {
+      const [regSnap, pitchSnap] = await Promise.all([
+        getDocs(query(collection(db, 'registrations'),  orderBy('registrationDate', 'desc'), limit(500))),
+        getDocs(query(collection(db, 'pitch-decks'),    orderBy('submissionDate',   'desc'), limit(500))),
+      ]);
 
-        setRegistrations(regSnap.docs.map(d => ({ id: d.id, ...d.data() }) as Registration));
-        setPitchDecks(pitchSnap.docs.map(d => ({ id: d.id, ...d.data() }) as PitchDeck));
-      } catch (err) {
-        console.error('Error loading data:', err);
-      } finally {
-        setLoading(false);
-      }
-    })();
+      setRegistrations(regSnap.docs.map(d => ({ id: d.id, ...d.data() }) as Registration));
+      setPitchDecks(pitchSnap.docs.map(d => ({ id: d.id, ...d.data() }) as PitchDeck));
+    } catch (err) {
+      console.error('Error loading data:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
   }, []);
 
   // ── reset page-1 whenever search / filter changes ─
   useEffect(() => { setRegPage(1);   }, [searchTerm, filterCategory]);
   useEffect(() => { setPitchPage(1); }, [searchTerm]);
+
+  // ── delete handlers ──────────────────────────────
+  const handleDeleteClick = (type: 'registration' | 'pitch', id: string, name: string) => {
+    setDeleteModal({ isOpen: true, type, id, name });
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteModal) return;
+    
+    setDeleting(true);
+    try {
+      const collectionName = deleteModal.type === 'registration' ? 'registrations' : 'pitch-decks';
+      await deleteDoc(doc(db, collectionName, deleteModal.id));
+      
+      // Update local state
+      if (deleteModal.type === 'registration') {
+        setRegistrations(prev => prev.filter(r => r.id !== deleteModal.id));
+      } else {
+        setPitchDecks(prev => prev.filter(p => p.id !== deleteModal.id));
+      }
+      
+      setDeleteModal(null);
+    } catch (err) {
+      console.error('Error deleting document:', err);
+      alert('Failed to delete. Please try again.');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   // ── memoised filtered lists ──────────────────────
   const filteredRegistrations = useMemo(() =>
@@ -369,7 +457,7 @@ export default function AdminDashboard() {
                 <table className="w-full">
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
-                      {['ID','Name','Email','Phone','Area of Interest','Category','Price','Date'].map(h => (
+                      {['ID','Name','Email','Phone','Area of Interest','Category','Price','Date','Actions'].map(h => (
                         <th key={h} className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">{h}</th>
                       ))}
                     </tr>
@@ -392,6 +480,15 @@ export default function AdminDashboard() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">{reg.price}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                           {reg.registrationDate?.toDate().toLocaleDateString() || 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <button
+                            onClick={() => handleDeleteClick('registration', reg.id, reg.fullName)}
+                            className="inline-flex items-center gap-1 text-red-600 hover:text-red-700 font-semibold text-sm transition"
+                            disabled={deleting}
+                          >
+                            <Trash2 className="w-4 h-4" /> Delete
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -468,6 +565,14 @@ export default function AdminDashboard() {
                             >
                               <Download className="w-4 h-4" /> Download
                             </a>
+                            {/* Delete */}
+                            <button
+                              onClick={() => handleDeleteClick('pitch', pitch.id, pitch.businessName)}
+                              className="inline-flex items-center gap-1 text-red-600 hover:text-red-700 font-semibold text-sm transition"
+                              disabled={deleting}
+                            >
+                              <Trash2 className="w-4 h-4" /> Delete
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -489,6 +594,34 @@ export default function AdminDashboard() {
           </>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteModal && (
+        <DeleteModal
+          isOpen={deleteModal.isOpen}
+          onClose={() => setDeleteModal(null)}
+          onConfirm={handleDeleteConfirm}
+          itemType={deleteModal.type === 'registration' ? 'registration' : 'pitch deck'}
+          itemName={deleteModal.name}
+        />
+      )}
+
+      {/* Add CSS for modal animation */}
+      <style jsx global>{`
+        @keyframes scale-up {
+          from {
+            transform: scale(0.9);
+            opacity: 0;
+          }
+          to {
+            transform: scale(1);
+            opacity: 1;
+          }
+        }
+        .animate-scale-up {
+          animation: scale-up 0.2s ease-out;
+        }
+      `}</style>
     </div>
   );
 }
