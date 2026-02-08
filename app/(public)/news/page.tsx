@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Blog - QuietShelter Empowerment Foundation',
     description: 'Read the latest updates and insights from QuietShelter Empowerment Foundation.',
-    url: 'https://your-domain.com/blog',
+    url: 'https://quietshelter.org/blog',
     images: ['/images/placeholder.jpg'],
   },
 };

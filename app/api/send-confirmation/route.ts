@@ -3,7 +3,7 @@ import nodemailer from 'nodemailer';
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, fullName, uniqueId, categoryName, price } = await request.json();
+    const { email, fullName, uniqueId, categoryName, price, includePitchDeck = true } = await request.json();
 
     // Validate required fields
     if (!email || !fullName || !uniqueId || !categoryName || !price) {
@@ -28,6 +28,52 @@ export async function POST(request: NextRequest) {
     // Build the pitch deck URL - use /pitchdeck route
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://quietshelter.org';
     const pitchDeckUrl = `${baseUrl}/pitchdeck?id=${encodeURIComponent(uniqueId)}&name=${encodeURIComponent(fullName)}&email=${encodeURIComponent(email)}&category=${encodeURIComponent(categoryName)}`;
+
+    // Conditional content based on includePitchDeck
+    const pitchDeckSection = includePitchDeck ? `
+      <div class="next-steps">
+        <h3>🚀 What's Next?</h3>
+        <ul>
+          <li><strong>Submit Your Pitch Deck:</strong> Click the button below to submit your business pitch deck using your Registration ID</li>
+          <li><strong>Complete Payment:</strong> Ensure your registration fee (${price}) is paid to secure your spot</li>
+          <li><strong>Training Schedule:</strong> You'll receive an email with training dates and platform access details</li>
+          <li><strong>Stay Connected:</strong> Check your email regularly for important program announcements</li>
+        </ul>
+      </div>
+      
+      <div style="text-align: center;">
+        <a href="${pitchDeckUrl}" class="button">
+          📊 Submit Your Pitch Deck Now →
+        </a>
+      </div>
+      
+      <div class="warning">
+        <p><strong>⏰ Important:</strong> The pitch deck submission deadline will be communicated separately. Don't wait until the last minute!</p>
+      </div>
+    ` : `
+      <div class="next-steps" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-left: 4px solid #f59e0b;">
+        <h3>✅ Self-Funded Track Confirmed</h3>
+        <p><strong>As a self-funded participant, you have full access to all program benefits including:</strong></p>
+        <ul>
+          <li><strong>Complete Training Modules:</strong> Access to all entrepreneurship training content</li>
+          <li><strong>Dedicated Mentorship:</strong> One-on-one guidance from experienced entrepreneurs</li>
+          <li><strong>Business Plan Competition:</strong> Eligibility for grants and seed funding</li>
+          <li><strong>Alumni Network:</strong> Lifetime access to our community of entrepreneurs</li>
+          <li><strong>Graduation Ceremony:</strong> Full participation in the program graduation</li>
+        </ul>
+        <p><strong>Your dedicated mentor will contact you shortly after the registration period closes (March 9, 2026).</strong></p>
+      </div>
+      
+      <div class="next-steps">
+        <h3>🚀 What's Next?</h3>
+        <ul>
+          <li><strong>Complete Payment:</strong> Ensure your registration fee (${price}) is paid to secure your spot</li>
+          <li><strong>Training Schedule:</strong> You'll receive an email with training dates and platform access details</li>
+          <li><strong>Mentorship Assignment:</strong> We'll match you with an experienced mentor in your industry</li>
+          <li><strong>Stay Connected:</strong> Check your email regularly for important program announcements</li>
+        </ul>
+      </div>
+    `;
 
     // Email HTML template
     const htmlContent = `
@@ -88,7 +134,7 @@ export async function POST(request: NextRequest) {
               <div class="registration-id">
                 <div class="registration-id-label">YOUR REGISTRATION ID</div>
                 <div class="registration-id-value">${uniqueId}</div>
-                <p class="id-note">⚠️ Keep this ID safe - you'll need it for pitch deck submission</p>
+                <p class="id-note">⚠️ Keep this ID safe for future reference</p>
               </div>
               
               <div class="details">
@@ -111,25 +157,7 @@ export async function POST(request: NextRequest) {
                 </div>
               </div>
               
-              <div class="next-steps">
-                <h3>🚀 What's Next?</h3>
-                <ul>
-                  <li><strong>Submit Your Pitch Deck:</strong> Click the button below to submit your business pitch deck using your Registration ID</li>
-                  <li><strong>Complete Payment:</strong> Ensure your registration fee (${price}) is paid to secure your spot</li>
-                  <li><strong>Training Schedule:</strong> You'll receive an email with training dates and platform access details</li>
-                  <li><strong>Stay Connected:</strong> Check your email regularly for important program announcements</li>
-                </ul>
-              </div>
-              
-              <div style="text-align: center;">
-                <a href="${pitchDeckUrl}" class="button">
-                  📊 Submit Your Pitch Deck Now →
-                </a>
-              </div>
-              
-              <div class="warning">
-                <p><strong>⏰ Important:</strong> The pitch deck submission deadline will be communicated separately. Don't wait until the last minute!</p>
-              </div>
+              ${pitchDeckSection}
               
               <p style="margin-top: 30px; color: #6b7280;">If you have any questions or need assistance, please contact our support team at <strong style="color: #059669;">support@quietshelter.org</strong></p>
               
@@ -148,7 +176,7 @@ export async function POST(request: NextRequest) {
       </html>
     `;
 
-    // Plain text version for email clients that don't support HTML
+    // Plain text version
     const textContent = `
 Registration Confirmed - FuturenTrepeneurship NYSC 2026
 
@@ -157,7 +185,7 @@ Dear ${fullName},
 Congratulations! Your registration has been successfully confirmed.
 
 YOUR REGISTRATION ID: ${uniqueId}
-(Keep this ID safe - you'll need it for pitch deck submission)
+(Keep this ID safe for future reference)
 
 REGISTRATION SUMMARY:
 - Name: ${fullName}
@@ -165,6 +193,7 @@ REGISTRATION SUMMARY:
 - Category: ${categoryName}
 - Registration Fee: ${price}
 
+${includePitchDeck ? `
 WHAT'S NEXT?
 1. Submit Your Pitch Deck using your Registration ID
 2. Complete your payment (${price}) to secure your spot
@@ -172,6 +201,18 @@ WHAT'S NEXT?
 4. Check your email regularly for program updates
 
 Submit your pitch deck here: ${pitchDeckUrl}
+` : `
+SELF-FUNDED TRACK CONFIRMED:
+You have full access to all program benefits including complete training modules, dedicated mentorship, business plan competition eligibility, alumni network access, and graduation ceremony participation.
+
+Your dedicated mentor will contact you shortly after the registration period closes (March 9, 2026).
+
+WHAT'S NEXT?
+1. Complete your payment (${price}) to secure your spot
+2. Watch for training schedule and access details
+3. Await mentorship assignment
+4. Check your email regularly for program updates
+`}
 
 If you have any questions, contact us at support@quietshelter.org
 

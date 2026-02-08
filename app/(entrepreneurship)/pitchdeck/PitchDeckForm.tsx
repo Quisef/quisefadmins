@@ -121,34 +121,34 @@ export default function PitchDeckForm() {
     }
   };
 
-  // ── Success screen ──────────────────────────────────────────────
+  // ── Success screen - Enhanced Mobile Responsive ─────────────────
   if (submitSuccess) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50/60 flex items-center justify-center p-6">
-        <div className="max-w-2xl w-full bg-white rounded-3xl shadow-2xl p-10 text-center border border-gray-100">
-          <div className="w-24 h-24 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-full flex items-center justify-center mx-auto mb-8 animate-pulse">
-            <Check className="w-14 h-14 text-white" />
+      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50/60 flex items-center justify-center p-4 sm:p-6">
+        <div className="max-w-2xl w-full bg-white rounded-2xl sm:rounded-3xl shadow-2xl p-6 sm:p-8 md:p-10 text-center border border-gray-100">
+          <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-full flex items-center justify-center mx-auto mb-6 sm:mb-8 animate-pulse">
+            <Check className="w-12 h-12 sm:w-14 sm:h-14 text-white" />
           </div>
 
-          <h2 className="text-4xl font-bold text-gray-900 mb-4">Pitch Deck Submitted!</h2>
-          <p className="text-lg text-gray-600 mb-8">Your innovative business pitch has been successfully submitted</p>
+          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3 sm:mb-4">Pitch Deck Submitted!</h2>
+          <p className="text-base sm:text-lg text-gray-600 mb-6 sm:mb-8 px-2">Your innovative business pitch has been successfully submitted</p>
 
-          <div className="bg-gradient-to-br from-emerald-50 to-teal-50 border-2 border-emerald-200 rounded-2xl p-8 mb-8">
-            <p className="text-sm text-gray-600 mb-2 uppercase tracking-wider font-semibold">Registration ID</p>
-            <p className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-600 mb-6">
+          <div className="bg-gradient-to-br from-emerald-50 to-teal-50 border-2 border-emerald-200 rounded-xl sm:rounded-2xl p-6 sm:p-8 mb-6 sm:mb-8">
+            <p className="text-xs sm:text-sm text-gray-600 mb-2 uppercase tracking-wider font-semibold">Registration ID</p>
+            <p className="text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-600 mb-4 sm:mb-6 break-all">
               {formData.registrationId}
             </p>
             <div className="space-y-2 text-left border-t border-emerald-200 pt-4">
-              <p className="text-gray-700"><span className="font-semibold">Business Name:</span> {formData.businessName}</p>
-              <p className="text-gray-700"><span className="font-semibold">Submitted by:</span>  {formData.fullName}</p>
+              <p className="text-sm sm:text-base text-gray-700 break-words"><span className="font-semibold">Business Name:</span> {formData.businessName}</p>
+              <p className="text-sm sm:text-base text-gray-700 break-words"><span className="font-semibold">Submitted by:</span> {formData.fullName}</p>
             </div>
           </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 mb-8 text-left">
-            <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
-              <AlertCircle className="w-5 h-5 text-blue-600" /> What's Next?
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 sm:p-6 mb-6 sm:mb-8 text-left">
+            <h3 className="font-bold text-base sm:text-lg text-gray-900 mb-3 flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0" /> What's Next?
             </h3>
-            <ul className="space-y-2 text-sm text-gray-700">
+            <ul className="space-y-2 text-sm sm:text-base text-gray-700">
               {[
                 'Our review team will evaluate your pitch deck within 5–7 business days',
                 'Shortlisted candidates will be invited for a pitch presentation',
@@ -156,7 +156,7 @@ export default function PitchDeckForm() {
                 'Check your email regularly for updates',
               ].map((item, i) => (
                 <li key={i} className="flex items-start gap-2">
-                  <span className="text-emerald-600 font-bold mt-0.5">•</span>
+                  <span className="text-emerald-600 font-bold mt-0.5 flex-shrink-0">•</span>
                   <span>{item}</span>
                 </li>
               ))}
@@ -165,7 +165,7 @@ export default function PitchDeckForm() {
 
           <a
             href="/futurentrepreneurship26"
-            className="inline-block bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-12 py-4 rounded-xl font-bold hover:from-emerald-700 hover:to-teal-700 transition shadow-xl hover:shadow-2xl text-lg"
+            className="inline-block w-full sm:w-auto bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-8 sm:px-12 py-3 sm:py-4 rounded-xl font-bold hover:from-emerald-700 hover:to-teal-700 transition shadow-xl hover:shadow-2xl text-base sm:text-lg"
           >
             Return to Home
           </a>
@@ -174,9 +174,9 @@ export default function PitchDeckForm() {
     );
   }
 
-  // ── Form page ───────────────────────────────────────────────────
+  // ── Form page - Enhanced Mobile Responsive ──────────────────────
   const inputClass = (field: string) =>
-    `w-full px-5 py-4 border rounded-xl transition focus:ring-2 focus:outline-none text-gray-900 placeholder-gray-400 ${
+    `w-full px-4 sm:px-5 py-3 sm:py-4 border rounded-xl transition focus:ring-2 focus:outline-none text-gray-900 placeholder-gray-400 text-sm sm:text-base ${
       errors[field] ? 'border-red-400 focus:ring-red-200' : 'border-gray-300 focus:ring-emerald-300 focus:border-emerald-500'
     }`;
 
@@ -189,68 +189,92 @@ export default function PitchDeckForm() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-teal-50/30 py-12 px-5">
+    <div className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-teal-50/30 py-8 sm:py-12 px-4 sm:px-5">
       <div className="max-w-5xl mx-auto">
 
-        {/* Header banner */}
-        <div className="bg-gradient-to-br from-emerald-700 via-teal-700 to-blue-800 text-white rounded-3xl p-8 md:p-12 mb-8 shadow-2xl">
-          <div className="flex items-center gap-3 mb-4">
-            <Lightbulb className="w-10 h-10" />
-            <h1 className="text-4xl md:text-5xl font-black">Submit Your Pitch Deck</h1>
+        {/* Header banner - Enhanced Mobile */}
+        <div className="bg-gradient-to-br from-emerald-700 via-teal-700 to-blue-800 text-white rounded-2xl sm:rounded-3xl p-6 sm:p-8 md:p-12 mb-6 sm:mb-8 shadow-2xl">
+          <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+            <Lightbulb className="w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0" />
+            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black leading-tight">Submit Your Pitch Deck</h1>
           </div>
-          <p className="text-xl text-teal-100 mb-6">Transform your innovative idea into a funded reality</p>
+          <p className="text-base sm:text-lg md:text-xl text-teal-100 mb-5 sm:mb-6">Transform your innovative idea into a funded reality</p>
 
-          <div className="bg-white/15 backdrop-blur-xl rounded-xl p-5 border border-white/20">
-            <p className="text-sm uppercase tracking-wider font-semibold mb-2">Your Registration</p>
-            <div className="grid md:grid-cols-3 gap-4 text-sm">
-              <div><span className="text-teal-200">ID:</span><p className="font-bold text-lg">{formData.registrationId || 'Not set'}</p></div>
-              <div><span className="text-teal-200">Name:</span><p className="font-bold text-lg">{formData.fullName || 'Not set'}</p></div>
-              <div><span className="text-teal-200">Category:</span><p className="font-bold text-lg">{formData.category || 'Not set'}</p></div>
+          <div className="bg-white/15 backdrop-blur-xl rounded-lg sm:rounded-xl p-4 sm:p-5 border border-white/20">
+            <p className="text-xs sm:text-sm uppercase tracking-wider font-semibold mb-3">Your Registration</p>
+            <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 text-sm sm:text-base">
+              <div>
+                <span className="text-teal-200 text-xs sm:text-sm">ID:</span>
+                <p className="font-bold text-base sm:text-lg break-all">{formData.registrationId || 'Not set'}</p>
+              </div>
+              <div>
+                <span className="text-teal-200 text-xs sm:text-sm">Name:</span>
+                <p className="font-bold text-base sm:text-lg break-words">{formData.fullName || 'Not set'}</p>
+              </div>
+              <div className="sm:col-span-2 md:col-span-1">
+                <span className="text-teal-200 text-xs sm:text-sm">Category:</span>
+                <p className="font-bold text-base sm:text-lg break-words">{formData.category || 'Not set'}</p>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Guidelines */}
-        <div className="bg-white rounded-3xl shadow-xl p-8 mb-8 border border-gray-100">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-            <FileText className="w-7 h-7 text-emerald-600" /> Pitch Deck Guidelines
+        {/* Guidelines - Enhanced Mobile */}
+        <div className="bg-white rounded-2xl sm:rounded-3xl shadow-xl p-6 sm:p-8 mb-6 sm:mb-8 border border-gray-100">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-5 sm:mb-6 flex items-center gap-2 sm:gap-3">
+            <FileText className="w-6 h-6 sm:w-7 sm:h-7 text-emerald-600 flex-shrink-0" /> 
+            <span>Pitch Deck Guidelines</span>
           </h2>
-          <div className="grid md:grid-cols-2 gap-6 mb-6">
-            <div className="bg-emerald-50 rounded-xl p-5 border border-emerald-100">
-              <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2"><Check className="w-5 h-5 text-emerald-600" /> Include These Sections</h3>
-              <ul className="space-y-2 text-sm text-gray-700">
+          <div className="grid md:grid-cols-2 gap-5 sm:gap-6 mb-5 sm:mb-6">
+            <div className="bg-emerald-50 rounded-xl p-4 sm:p-5 border border-emerald-100">
+              <h3 className="font-bold text-base sm:text-lg text-gray-900 mb-3 flex items-center gap-2">
+                <Check className="w-5 h-5 text-emerald-600 flex-shrink-0" /> Include These Sections
+              </h3>
+              <ul className="space-y-1.5 sm:space-y-2 text-sm sm:text-base text-gray-700">
                 {['Problem & Solution','Market Opportunity','Business Model','Competitive Advantage','Financial Projections','Team & Milestones'].map(s => <li key={s}>• {s}</li>)}
               </ul>
             </div>
-            <div className="bg-blue-50 rounded-xl p-5 border border-blue-100">
-              <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2"><AlertCircle className="w-5 h-5 text-blue-600" /> Technical Requirements</h3>
-              <ul className="space-y-2 text-sm text-gray-700">
+            <div className="bg-blue-50 rounded-xl p-4 sm:p-5 border border-blue-100">
+              <h3 className="font-bold text-base sm:text-lg text-gray-900 mb-3 flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0" /> Technical Requirements
+              </h3>
+              <ul className="space-y-1.5 sm:space-y-2 text-sm sm:text-base text-gray-700">
                 {['Format: PDF or PowerPoint (.pptx)','Maximum size: 10MB','Recommended: 10–15 slides','Clear, professional design','Include contact information'].map(s => <li key={s}>• {s}</li>)}
               </ul>
             </div>
           </div>
-          <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-l-4 border-amber-500 p-5 rounded-r-xl">
-            <p className="text-sm text-gray-700"><strong>💡 Pro Tip:</strong> Focus on solving a real problem with a scalable solution. Show traction, market research, and a clear path to profitability.</p>
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-l-4 border-amber-500 p-4 sm:p-5 rounded-r-xl">
+            <p className="text-sm sm:text-base text-gray-700">
+              <strong>💡 Pro Tip:</strong> Focus on solving a real problem with a scalable solution. Show traction, market research, and a clear path to profitability.
+            </p>
           </div>
         </div>
 
-        {/* Form */}
-        <div className="bg-white rounded-3xl shadow-xl p-8 md:p-10 border border-gray-100">
-          <h2 className="text-3xl font-bold text-gray-900 mb-8">Business Information</h2>
+        {/* Form - Enhanced Mobile */}
+        <div className="bg-white rounded-2xl sm:rounded-3xl shadow-xl p-6 sm:p-8 md:p-10 border border-gray-100">
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6 sm:mb-8">Business Information</h2>
 
           {submitError && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-5 py-4 rounded-xl mb-6 flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" /><span>{submitError}</span>
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 sm:px-5 py-3 sm:py-4 rounded-xl mb-5 sm:mb-6 flex items-start gap-2 sm:gap-3 text-sm sm:text-base">
+              <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+              <span>{submitError}</span>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-7">
+          <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-7">
             {/* Business Name */}
             <div>
               <label className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                <Target className="w-4 h-4 text-emerald-600" /> Business / Startup Name *
+                <Target className="w-4 h-4 text-emerald-600 flex-shrink-0" /> Business / Startup Name *
               </label>
-              <input type="text" name="businessName" value={formData.businessName} onChange={handleChange} className={inputClass('businessName')} placeholder="e.g., GreenTech Solutions" />
+              <input 
+                type="text" 
+                name="businessName" 
+                value={formData.businessName} 
+                onChange={handleChange} 
+                className={inputClass('businessName')} 
+                placeholder="e.g., GreenTech Solutions" 
+              />
               {errors.businessName && <p className="mt-1.5 text-sm text-red-600">{errors.businessName}</p>}
             </div>
 
@@ -258,7 +282,7 @@ export default function PitchDeckForm() {
             {textareas.map(({ name, label, icon: Icon, placeholder, rows }) => (
               <div key={name}>
                 <label className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                  <Icon className="w-4 h-4 text-emerald-600" /> {label} *
+                  <Icon className="w-4 h-4 text-emerald-600 flex-shrink-0" /> {label} *
                 </label>
                 <textarea
                   name={name}
@@ -272,20 +296,32 @@ export default function PitchDeckForm() {
               </div>
             ))}
 
-            {/* Funding + Team row */}
-            <div className="grid md:grid-cols-2 gap-6">
+            {/* Funding + Team row - Enhanced Mobile */}
+            <div className="grid sm:grid-cols-2 gap-5 sm:gap-6">
               <div>
                 <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
-                  <DollarSign className="w-4 h-4 text-emerald-600" /> Funding Needs *
+                  <DollarSign className="w-4 h-4 text-emerald-600 flex-shrink-0" /> Funding Needs *
                 </label>
-                <input type="text" name="fundingNeeds" value={formData.fundingNeeds} onChange={handleChange} className={inputClass('fundingNeeds')} placeholder="e.g., ₦2,000,000" />
+                <input 
+                  type="text" 
+                  name="fundingNeeds" 
+                  value={formData.fundingNeeds} 
+                  onChange={handleChange} 
+                  className={inputClass('fundingNeeds')} 
+                  placeholder="e.g., ₦2,000,000" 
+                />
                 {errors.fundingNeeds && <p className="mt-1.5 text-sm text-red-600">{errors.fundingNeeds}</p>}
               </div>
               <div>
                 <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
-                  <Users className="w-4 h-4 text-emerald-600" /> Team Size *
+                  <Users className="w-4 h-4 text-emerald-600 flex-shrink-0" /> Team Size *
                 </label>
-                <select name="teamSize" value={formData.teamSize} onChange={handleChange} className={`${inputClass('teamSize')} bg-white`}>
+                <select 
+                  name="teamSize" 
+                  value={formData.teamSize} 
+                  onChange={handleChange} 
+                  className={`${inputClass('teamSize')} bg-white`}
+                >
                   <option value="">Select team size</option>
                   <option value="1">Solo Founder</option>
                   <option value="2-3">2–3 Members</option>
@@ -296,29 +332,35 @@ export default function PitchDeckForm() {
               </div>
             </div>
 
-            {/* File upload */}
+            {/* File upload - Enhanced Mobile */}
             <div>
               <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
-                <Upload className="w-4 h-4 text-emerald-600" /> Upload Pitch Deck *
+                <Upload className="w-4 h-4 text-emerald-600 flex-shrink-0" /> Upload Pitch Deck *
               </label>
-              <div className={`border-2 border-dashed rounded-xl p-8 text-center transition ${
+              <div className={`border-2 border-dashed rounded-xl p-6 sm:p-8 text-center transition ${
                 errors.pitchDeck ? 'border-red-400 bg-red-50' : 'border-gray-300 hover:border-emerald-500 bg-gray-50'
               }`}>
-                <input type="file" id="pitchDeck" accept=".pdf,.ppt,.pptx" onChange={handleFileChange} className="hidden" />
+                <input 
+                  type="file" 
+                  id="pitchDeck" 
+                  accept=".pdf,.ppt,.pptx" 
+                  onChange={handleFileChange} 
+                  className="hidden" 
+                />
                 <label htmlFor="pitchDeck" className="cursor-pointer">
                   {filePreview ? (
-                    <div className="flex items-center justify-center gap-3 text-emerald-700">
-                      <FileText className="w-8 h-8" />
-                      <div className="text-left">
-                        <p className="font-semibold">{filePreview}</p>
-                        <p className="text-sm text-gray-600">Click to change file</p>
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-3 text-emerald-700">
+                      <FileText className="w-8 h-8 flex-shrink-0" />
+                      <div className="text-center sm:text-left">
+                        <p className="font-semibold text-sm sm:text-base break-all">{filePreview}</p>
+                        <p className="text-xs sm:text-sm text-gray-600 mt-1">Click to change file</p>
                       </div>
                     </div>
                   ) : (
                     <>
-                      <Upload className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                      <p className="text-gray-700 font-medium mb-1">Click to upload pitch deck</p>
-                      <p className="text-sm text-gray-500">PDF or PowerPoint (Max 10MB)</p>
+                      <Upload className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400 mx-auto mb-2 sm:mb-3" />
+                      <p className="text-sm sm:text-base text-gray-700 font-medium mb-1">Click to upload pitch deck</p>
+                      <p className="text-xs sm:text-sm text-gray-500">PDF or PowerPoint (Max 10MB)</p>
                     </>
                   )}
                 </label>
@@ -326,23 +368,26 @@ export default function PitchDeckForm() {
               {errors.pitchDeck && <p className="mt-1.5 text-sm text-red-600">{errors.pitchDeck}</p>}
             </div>
 
-            {/* Submit button */}
+            {/* Submit button - Enhanced Mobile */}
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white py-5 rounded-xl font-bold text-lg transition-all shadow-lg hover:shadow-xl disabled:opacity-70 flex items-center justify-center gap-3"
+              className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white py-4 sm:py-5 rounded-xl font-bold text-base sm:text-lg transition-all shadow-lg hover:shadow-xl disabled:opacity-70 flex items-center justify-center gap-2 sm:gap-3 active:scale-95"
             >
               {isSubmitting
-                ? (<><Loader2 className="w-6 h-6 animate-spin" /> Submitting…</>)
-                : (<><Upload className="w-6 h-6" /> Submit Pitch Deck</>)}
+                ? (<><Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" /> Submitting…</>)
+                : (<><Upload className="w-5 h-5 sm:w-6 sm:h-6" /> Submit Pitch Deck</>)}
             </button>
           </form>
         </div>
 
-        {/* Back link */}
-        <div className="text-center mt-8">
-          <a href="/futurentrepreneurship26" className="inline-flex items-center gap-2 text-emerald-700 hover:text-emerald-800 font-semibold transition">
-            <ArrowLeft className="w-5 h-5" /> Back to Registration
+        {/* Back link - Enhanced Mobile */}
+        <div className="text-center mt-6 sm:mt-8">
+          <a 
+            href="/futurentrepreneurship26" 
+            className="inline-flex items-center gap-2 text-emerald-700 hover:text-emerald-800 font-semibold transition text-sm sm:text-base"
+          >
+            <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" /> Back to Registration
           </a>
         </div>
       </div>

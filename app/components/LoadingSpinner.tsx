@@ -6,7 +6,7 @@ const LoadingSpinner: React.FC = () => {
     <div className="flex flex-col items-center justify-center h-full">
       <div className="animate-bounce">
         <Image
-          src={"/images/log.png"} // Replace with your actual logo path
+          src={"/images/QSEF-06.png"} // Replace with your actual logo path
           alt="Loading"
           width={264}
           height={264}
