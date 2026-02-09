@@ -17,7 +17,7 @@ const Header: React.FC = () => {
         {/* Logo */}
         <Link href="/" className="flex items-center transition-transform duration-300 hover:scale-105">
           <Image
-            src="/images/QSEF-01.PNG"
+            src="/images/QSEF-01.svg"
             alt="QuietShelter Logo"
             width={120}
             height={50}
