@@ -13,42 +13,13 @@ import {
 } from '@/lib/registrationService';
 
 // ────────────────────────────────────────────────
-// TypeScript declarations for Paystack
+// PAYSTACK PAYMENT LINKS INTEGRATION
 // ────────────────────────────────────────────────
-declare global {
-  interface Window {
-    PaystackPop: {
-      setup: (config: {
-        key: string;
-        email: string;
-        amount: number;
-        currency: string;
-        ref: string;
-        metadata?: any;
-        onClose: () => void;
-        callback: (response: any) => void;
-      }) => {
-        openIframe: () => void;
-      };
-    };
-  }
-}
-
-// ────────────────────────────────────────────────
-// PAYSTACK INTEGRATION SETUP
-// ────────────────────────────────────────────────
-// 1. Add this script to your app/layout.tsx or public/index.html:
-//    <Script src="https://js.paystack.co/v1/inline.js" strategy="beforeInteractive" />
-//
-// 2. Create a .env.local file and add your Paystack public key:
-//    NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY=pk_live_your_actual_public_key
-//
-// 3. Update sendConfirmationEmail function signature to accept includePitchDeck parameter:
-//    sendConfirmationEmail(email, name, id, category, price, includePitchDeck)
-//
-// 4. Email Logic:
-//    - Basic, Fully Funded, Partially Funded → Include pitch deck link
-//    - Self-Funded → No pitch deck link (they pay full program fee)
+// Payment links for different categories:
+// - ₦20,000 categories (Fully Funded, Partially Funded, Basic): 
+//   https://paystack.shop/pay/EntrepreneurshipProgramPayment
+// - ₦70,000 category (Self-Funded):
+//   https://paystack.shop/pay/Self_Funded
 // ────────────────────────────────────────────────
 
 // ────────────────────────────────────────────────
@@ -132,26 +103,50 @@ const BENEFITS = [
 
 const CATEGORIES = [
   {
-    id: 'fully-funded', name: 'Fully Funded Registration', type: 'Competitive', slots: 100, price: '₦20,000',
-    color: 'bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-200', badge: 'bg-emerald-600',
+    id: 'fully-funded', 
+    name: 'Fully Funded Registration', 
+    type: 'Competitive', 
+    slots: 100, 
+    price: '₦20,000',
+    paymentLink: 'https://paystack.shop/pay/fhdr-199t-',
+    color: 'bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-200', 
+    badge: 'bg-emerald-600',
     benefits: ['Full access to training modules','Dedicated mentorship program','Business plan competition → Grant eligible','Lifetime Alumni Network access','Graduation ceremony (transport + accommodation)','100% Program Fee Discount'],
     notIncluded: [] as string[],
   },
   {
-    id: 'partially-funded', name: 'Partially Funded Registration', type: 'Competitive', slots: 100, price: '₦20,000',
-    color: 'bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200', badge: 'bg-blue-600',
+    id: 'partially-funded', 
+    name: 'Partially Funded Registration', 
+    type: 'Competitive', 
+    slots: 100, 
+    price: '₦20,000',
+    paymentLink: 'https://paystack.shop/pay/EntrepreneurshipProgramPayment',
+    color: 'bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200', 
+    badge: 'bg-blue-600',
     benefits: ['Full access to training modules','Dedicated mentorship program','Business plan competition → Seed funding','Lifetime Alumni Network access','Graduation ceremony attendance','100% Program Fee Discount'],
     notIncluded: ['Transportation to graduation ceremony','Accommodation during graduation'],
   },
   {
-    id: 'basic', name: 'Basic Registration', type: 'Standard', slots: 100, price: '₦20,000',
-    color: 'bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200', badge: 'bg-purple-600',
+    id: 'basic', 
+    name: 'Basic Registration', 
+    type: 'Standard', 
+    slots: 100, 
+    price: '₦20,000',
+    paymentLink: 'https://paystack.shop/pay/EntrepreneurshipProgramPayment',
+    color: 'bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200', 
+    badge: 'bg-purple-600',
     benefits: ['Core training modules','Alumni Network access','Graduation ceremony attendance','Business plan competition (performance-based)','100% Program Fee Discount'],
     notIncluded: ['Dedicated mentorship','Transportation & accommodation for graduation'],
   },
   {
-    id: 'self-funded', name: 'Self-Funded Registration', type: 'Grantee Selection', slots: 100, price: '₦70,000',
-    color: 'bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200', badge: 'bg-amber-600',
+    id: 'self-funded', 
+    name: 'Self-Funded Registration', 
+    type: 'Grantee Selection', 
+    slots: 100, 
+    price: '₦70,000',
+    paymentLink: 'https://paystack.shop/pay/Self_Funded',
+    color: 'bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200', 
+    badge: 'bg-amber-600',
     benefits: ['Full access to training modules','Dedicated mentorship program','Business plan competition → Grant eligible','Lifetime Alumni Network access','Graduation ceremony attendance','₦20,000 Registration + ₦50,000 Program Fee'],
     notIncluded: ['Transportation to graduation ceremony','Accommodation during graduation'],
   },
@@ -284,12 +279,6 @@ function BenefitsCarousel() {
 // Category Card - Enhanced Mobile Responsive
 // ────────────────────────────────────────────────
 function CategoryCard({ category, onSelect }: { category: Category; onSelect: () => void }) {
-  const calculateDiscount = () => {
-    const current = parseFloat(category.price.replace(/[₦,]/g, ''));
-  };
-  
-  const discountPercentage = calculateDiscount();
-  
   return (
     <div className={`${category.color} border-2 rounded-2xl sm:rounded-3xl p-5 sm:p-6 md:p-7 transition-all duration-300 hover:shadow-2xl sm:hover:scale-[1.03] sm:hover:-translate-y-2 group flex flex-col h-full`}>
       <div className="flex flex-col xs:flex-row xs:items-start xs:justify-between mb-4 sm:mb-5 gap-3 xs:gap-2">
@@ -397,67 +386,45 @@ export default function FuturenTrepeneurship() {
         newUniqueId
       );
 
-      // Initialize Paystack payment
-      const amountInKobo = parseFloat(selectedCategory.price.replace(/[₦,]/g, '')) * 100;
+      // Build success URL - where users should land after payment
+      const successUrl = `${window.location.origin}/futurentrepreneurship26?` +
+        `reference=${encodeURIComponent(newUniqueId)}` +
+        `&status=success` +
+        `&category=${encodeURIComponent(selectedCategory.id)}`;
+
+      // Add to payment link
+      const paymentUrl = new URL(selectedCategory.paymentLink);
       
-      // @ts-ignore - Paystack is loaded via CDN
-      const handler = window.PaystackPop.setup({
-        key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || 'pk_test_YOUR_PUBLIC_KEY', // Replace with your Paystack public key
+      // User data
+      paymentUrl.searchParams.append('email', formData.email);
+      paymentUrl.searchParams.append('first_name', formData.fullName.split(' ')[0]);
+      paymentUrl.searchParams.append('last_name', formData.fullName.split(' ').slice(1).join(' ') || '');
+      paymentUrl.searchParams.append('phone', formData.phone);
+      
+      // Reference
+      paymentUrl.searchParams.append('reference', newUniqueId);
+      
+      // Metadata
+      paymentUrl.searchParams.append('metadata[registration_id]', newUniqueId);
+      paymentUrl.searchParams.append('metadata[category]', selectedCategory.name);
+      paymentUrl.searchParams.append('metadata[category_id]', selectedCategory.id);
+      
+      // ⭐ KEY: Redirect URL
+      paymentUrl.searchParams.append('callback_url', successUrl);
+
+
+      // Store data in sessionStorage for post-payment verification
+      sessionStorage.setItem('pendingRegistration', JSON.stringify({
+        uniqueId: newUniqueId,
         email: formData.email,
-        amount: amountInKobo,
-        currency: 'NGN',
-        ref: newUniqueId,
-        metadata: {
-          custom_fields: [
-            {
-              display_name: "Registration ID",
-              variable_name: "registration_id",
-              value: newUniqueId
-            },
-            {
-              display_name: "Category",
-              variable_name: "category",
-              value: selectedCategory.name
-            },
-            {
-              display_name: "Full Name",
-              variable_name: "full_name",
-              value: formData.fullName
-            }
-          ]
-        },
-        onClose: function() {
-          setIsSubmitting(false);
-          setSubmitError('Payment cancelled. Please complete payment to activate your registration.');
-        },
-        callback: async function(response: any) {
-          // Payment successful
-          if (response.status === 'success') {
-            // Determine if pitch deck link should be included
-            const includePitchDeck = selectedCategory.id !== 'self-funded';
-            
-            // Send confirmation email with or without pitch deck link
-            const emailSent = await sendConfirmationEmail(
-              formData.email, 
-              formData.fullName, 
-              newUniqueId,
-              selectedCategory.name, 
-              selectedCategory.price,
-              includePitchDeck
-            );
-            
-            if (!emailSent) console.warn('Email sending failed, but registration and payment were successful');
+        fullName: formData.fullName,
+        categoryName: selectedCategory.name,
+        categoryId: selectedCategory.id,
+        price: selectedCategory.price,
+      }));
 
-            setUniqueId(newUniqueId);
-            setRegistrationComplete(true);
-          } else {
-            setSubmitError('Payment verification failed. Please contact support with your reference: ' + newUniqueId);
-          }
-          setIsSubmitting(false);
-        }
-      });
-
-      handler.openIframe();
+      // Redirect to Paystack payment page
+      window.location.href = paymentUrl.toString();
       
     } catch (error) {
       console.error('Registration error:', error);
@@ -465,6 +432,51 @@ export default function FuturenTrepeneurship() {
       setIsSubmitting(false);
     }
   };
+
+  // Check for payment callback on component mount
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const reference = urlParams.get('reference');
+    const status = urlParams.get('status');
+
+    if (reference && status === 'success') {
+      const pendingData = sessionStorage.getItem('pendingRegistration');
+      if (pendingData) {
+        const data = JSON.parse(pendingData);
+        
+        // Determine if pitch deck link should be included
+        const includePitchDeck = data.categoryId !== 'self-funded';
+        
+        // Send confirmation email
+        sendConfirmationEmail(
+          data.email,
+          data.fullName,
+          data.uniqueId,
+          data.categoryName,
+          data.price,
+          includePitchDeck
+        ).catch(err => console.warn('Email sending failed:', err));
+
+        // Set state for success screen
+        setUniqueId(data.uniqueId);
+        setFormData({
+          fullName: data.fullName,
+          email: data.email,
+          phone: '',
+          areaOfInterest: '',
+          category: data.categoryId
+        });
+        setSelectedCategory(CATEGORIES.find(c => c.id === data.categoryId) || null);
+        setRegistrationComplete(true);
+
+        // Clear stored data
+        sessionStorage.removeItem('pendingRegistration');
+        
+        // Clean up URL
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    }
+  }, []);
 
   const reset = () => {
     setRegistrationComplete(false);
@@ -613,9 +625,13 @@ export default function FuturenTrepeneurship() {
                 {isSubmitting ? (
                   <><Loader2 className="w-6 h-6 sm:w-8 sm:h-8 animate-spin" /> Processing…</>
                 ) : (
-                  <>Confirm & Secure My Spot →</>
+                  <>Proceed to Payment →</>
                 )}
               </button>
+
+              <p className="text-xs sm:text-sm text-center text-gray-500 mt-4">
+                You will be redirected to Paystack to complete your secure payment
+              </p>
             </form>
           </div>
         </div>
