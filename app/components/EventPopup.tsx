@@ -133,7 +133,7 @@ export default function EventPopup() {
               <p className="text-gray-500 mb-8 leading-relaxed text-lg">
                 Our <strong>Entrepreneurship Training</strong> is coming <br />
                 <span className="font-bold text-blue-500">February 9, 2026</span>!<br />
-                Early bird tickets → <strong className="text-rose-600">30% OFF</strong> (5 days only!)
+                Early bird tickets → <strong className="text-rose-600">30% OFF</strong> (29 days only!)
               </p>
 
               <a
