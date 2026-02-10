@@ -1,213 +1,184 @@
-// app/api/webhooks/paystack/route.ts
+// app/api/webhook/paystack/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { db } from '@/lib/firebase';
 import { doc, updateDoc, getDoc } from 'firebase/firestore';
 
-/**
- * Paystack Webhook Handler (Firebase)
- * 
- * This endpoint:
- * 1. Verifies webhook signature from Paystack
- * 2. Updates registration payment status in Firestore
- * 3. Sends conditional confirmation email
- * 
- * Setup in Paystack Dashboard:
- * Settings → API Keys & Webhooks → Add webhook URL:
- * https://yourdomain.com/api/webhooks/paystack
- */
-
 export async function POST(request: NextRequest) {
   try {
-    // Get the raw body for signature verification
-    const body = await request.text();
-    const signature = request.headers.get('x-paystack-signature');
-
-    if (!signature) {
-      console.error('❌ No signature provided');
-      return NextResponse.json(
-        { error: 'No signature' },
-        { status: 400 }
-      );
-    }
-
-    // Verify webhook signature
-    const secret = process.env.PAYSTACK_SECRET_KEY;
-    if (!secret) {
-      console.error('❌ PAYSTACK_SECRET_KEY not configured');
-      return NextResponse.json(
-        { error: 'Server configuration error' },
-        { status: 500 }
-      );
-    }
-
+    // Get the request body as text for signature verification
+    const text = await request.text();
+    const payload = JSON.parse(text);
+    
+    // Verify the webhook signature
     const hash = crypto
-      .createHmac('sha512', secret)
-      .update(body)
+      .createHmac('sha512', process.env.PAYSTACK_SECRET_KEY!)
+      .update(text)
       .digest('hex');
-
-    if (hash !== signature) {
-      console.error('❌ Invalid signature');
+    
+    const paystackSignature = request.headers.get('x-paystack-signature');
+    
+    if (hash !== paystackSignature) {
+      console.error('❌ Invalid webhook signature');
       return NextResponse.json(
         { error: 'Invalid signature' },
         { status: 400 }
       );
     }
-
-    // Parse the verified event
-    const event = JSON.parse(body);
-
-    console.log('✅ Paystack webhook received:', {
-      event: event.event,
-      reference: event.data?.reference,
-      status: event.data?.status,
-    });
-
+    
+    console.log('✅ Webhook signature verified');
+    
     // Handle different event types
-    switch (event.event) {
+    const event = payload.event;
+    
+    switch (event) {
       case 'charge.success':
-        await handleSuccessfulPayment(event.data);
+        await handleSuccessfulPayment(payload.data);
         break;
-
+        
       case 'charge.failed':
-        await handleFailedPayment(event.data);
+        await handleFailedPayment(payload.data);
         break;
-
+        
       default:
-        console.log('ℹ️ Unhandled event type:', event.event);
+        console.log(`ℹ️ Unhandled event type: ${event}`);
     }
-
+    
     return NextResponse.json({ success: true });
-
+    
   } catch (error) {
     console.error('❌ Webhook error:', error);
     return NextResponse.json(
-      { error: 'Webhook processing failed' },
+      { 
+        error: 'Webhook processing failed',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }
 }
 
-/**
- * Handle successful payment
- */
 async function handleSuccessfulPayment(data: any) {
-  const { reference, customer, metadata, channel, paid_at, amount } = data;
-
-  console.log('💰 Processing successful payment:', {
-    reference,
-    email: customer.email,
-    category: metadata?.category,
-  });
-
   try {
-    // 1. Get registration from Firestore
-    const registrationRef = doc(db, 'registrations', reference);
-    const registrationSnap = await getDoc(registrationRef);
-
-    if (!registrationSnap.exists()) {
-      console.error('❌ Registration not found:', reference);
+    console.log('💰 Processing successful payment...');
+    
+    const metadata = data.metadata;
+    const registrationId = metadata?.registration_id;
+    const categoryId = metadata?.category_id;
+    
+    if (!registrationId) {
+      console.error('❌ No registration ID in metadata');
       return;
     }
-
-    const registrationData = registrationSnap.data();
-
-    // 2. Update payment status in Firestore
-    await updateDoc(registrationRef, {
+    
+    console.log(`📝 Registration ID: ${registrationId}`);
+    console.log(`🏷️ Category ID: ${categoryId}`);
+    
+    // Get the registration from Firebase
+    const docRef = doc(db, 'registrations', registrationId);
+    const docSnap = await getDoc(docRef);
+    
+    if (!docSnap.exists()) {
+      console.error('❌ Registration not found in database');
+      return;
+    }
+    
+    const registrationData = docSnap.data();
+    
+    // Update the registration with payment details
+    await updateDoc(docRef, {
       paymentStatus: 'completed',
-      paymentReference: reference,
+      paymentReference: data.reference,
       paymentMethod: 'paystack',
-      paymentChannel: channel,
-      paidAt: new Date(paid_at),
-      amountPaid: amount / 100, // Convert from kobo to naira
+      paymentChannel: data.channel,
+      paidAt: new Date(data.paid_at),
+      amountPaid: data.amount / 100, // Convert from kobo to naira
       updatedAt: new Date(),
     });
-
-    console.log('✅ Updated payment status in Firebase for:', reference);
-
-    // 3. Determine if pitch deck link should be included
-    const categoryId = registrationData.category || '';
-    const includePitchDeck = categoryId !== 'self-funded';
-
-    console.log('📧 Sending email:', {
+    
+    console.log('✅ Payment status updated in database');
+    
+    // Send confirmation email with pitch deck link
+    await sendConfirmationEmail({
       email: registrationData.email,
-      includePitchDeck,
-      category: registrationData.categoryName,
+      fullName: registrationData.fullName,
+      uniqueId: registrationId,
+      categoryName: registrationData.categoryName,
+      categoryId: registrationData.category,
+      price: registrationData.price,
     });
-
-    // 4. Send confirmation email with conditional content
-    const emailResponse = await fetch(
-      `${process.env.NEXT_PUBLIC_APP_URL}/api/send-confirmation`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: registrationData.email,
-          fullName: registrationData.fullName,
-          uniqueId: reference,
-          categoryName: registrationData.categoryName,
-          price: registrationData.price,
-          includePitchDeck, // Conditional parameter
-        }),
-      }
-    );
-
-    if (emailResponse.ok) {
-      console.log('✅ Confirmation email sent to:', registrationData.email);
-    } else {
-      const errorText = await emailResponse.text();
-      console.error('❌ Failed to send confirmation email:', errorText);
-    }
-
+    
+    console.log(`✅ Payment processed successfully for: ${registrationId}`);
+    
   } catch (error) {
     console.error('❌ Error handling successful payment:', error);
     throw error;
   }
 }
 
-/**
- * Handle failed payment
- */
 async function handleFailedPayment(data: any) {
-  const { reference, customer, gateway_response } = data;
-
-  console.log('❌ Payment failed:', {
-    reference,
-    email: customer.email,
-    reason: gateway_response,
-  });
-
   try {
-    // Update registration status in Firestore
-    const registrationRef = doc(db, 'registrations', reference);
-    const registrationSnap = await getDoc(registrationRef);
-
-    if (!registrationSnap.exists()) {
-      console.error('❌ Registration not found:', reference);
+    console.log('⚠️ Processing failed payment...');
+    
+    const metadata = data.metadata;
+    const registrationId = metadata?.registration_id;
+    
+    if (!registrationId) {
+      console.error('❌ No registration ID in metadata');
       return;
     }
-
-    await updateDoc(registrationRef, {
+    
+    // Update the registration in Firebase
+    const docRef = doc(db, 'registrations', registrationId);
+    await updateDoc(docRef, {
       paymentStatus: 'failed',
-      paymentReference: reference,
-      failureReason: gateway_response,
+      paymentReference: data.reference,
+      failureReason: data.gateway_response,
       updatedAt: new Date(),
     });
-
-    console.log('✅ Updated failed payment status for:', reference);
-
-    // Optional: Send failure notification email
-    // You can create a separate API endpoint for this
-    // await sendPaymentFailureEmail(customer.email, reference);
-
+    
+    console.log(`⚠️ Payment failed for registration: ${registrationId}`);
+    console.log(`Reason: ${data.gateway_response}`);
+    
   } catch (error) {
     console.error('❌ Error handling failed payment:', error);
     throw error;
   }
 }
 
-// Disable body parsing for webhook signature verification
-export const dynamic = 'force-dynamic';
-export const runtime = 'nodejs';
+/**
+ * Send confirmation email by calling our email API
+ */
+async function sendConfirmationEmail(params: {
+  email: string;
+  fullName: string;
+  uniqueId: string;
+  categoryName: string;
+  categoryId: string;
+  price: string;
+}) {
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    
+    const response = await fetch(`${baseUrl}/api/send-confirmation-email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(params),
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      console.error('❌ Email sending failed:', error);
+      throw new Error('Failed to send confirmation email');
+    }
+    
+    console.log('✅ Confirmation email sent successfully');
+    
+  } catch (error) {
+    console.error('❌ Error sending confirmation email:', error);
+    // Don't throw - we don't want email failures to break the webhook
+    // The payment was successful, email is just a notification
+  }
+}

@@ -9,7 +9,6 @@ import {
 import {
   generateUniqueId,
   saveRegistration,
-  sendConfirmationEmail
 } from '@/lib/registrationService';
 
 // ────────────────────────────────────────────────
@@ -21,49 +20,6 @@ import {
 // - ₦70,000 category (Self-Funded):
 //   https://paystack.shop/pay/Self_Funded
 // ────────────────────────────────────────────────
-
-// ────────────────────────────────────────────────
-// Metadata for SEO (Next.js App Router)
-const metadata = {
-  title: 'FuturenTrepeneurship NYSC 2026 – Entrepreneurship Training & Funding Program Nigeria',
-  description: 'Register now for FuturenTrepeneurship NYSC Cohort 2026 – hybrid entrepreneurship training, mentorship, seed funding, grants & alumni network by Quiet Shelter Empowerment Foundation. Limited slots – Feb 10 to March 9, 2026.',
-  keywords: [
-    'NYSC entrepreneurship program 2026',
-    'NYSC business training Nigeria',
-    'youth entrepreneurship Nigeria',
-    'seed funding NYSC',
-    'entrepreneurship mentorship Nigeria',
-    'FuturenTrepeneurship registration',
-    'QuiSEF entrepreneurship program',
-    'NYSC corps members business',
-    'grant eligible training 2026'
-  ].join(', '),
-  openGraph: {
-    title: 'FuturenTrepeneurship NYSC 2026 – Start Your Entrepreneurial Journey',
-    description: 'Join the NYSC 2026 cohort for world-class entrepreneurship training, mentorship, pitch competitions & funding opportunities. Register before slots run out!',
-    url: 'https://quietshelter.org/futurentrepreneurship26',
-    siteName: 'FuturenTrepeneurship',
-    images: [
-      {
-        url: '/QSEF-01.jpg',
-        width: 1200,
-        height: 630,
-        alt: 'FuturenTrepeneurship NYSC 2026 – Youth Empowerment Program',
-      },
-    ],
-    locale: 'en_NG',
-    type: 'website',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'FuturenTrepeneurship NYSC 2026 – Entrepreneurship & Funding',
-    description: 'Empowering Nigerian youth with training, mentorship & seed funding. Register today!',
-    images: ['/og-image.jpg'],
-  },
-  alternates: {
-    canonical: 'https://quietshelter.org/futurentrepreneurship26',
-  },
-};
 
 // ────────────────────────────────────────────────
 // Static data
@@ -108,7 +64,7 @@ const CATEGORIES = [
     type: 'Competitive', 
     slots: 100, 
     price: '₦20,000',
-    paymentLink: 'https://paystack.shop/pay/EntrepreneurshipProgramPayment',
+    paymentLink: 'https://paystack.shop/pay/testingx',
     color: 'bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-200', 
     badge: 'bg-emerald-600',
     benefits: ['Full access to training modules','Dedicated mentorship program','Business plan competition → Grant eligible','Lifetime Alumni Network access','Graduation ceremony (transport + accommodation)','100% Program Fee Discount'],
@@ -369,14 +325,12 @@ function CategoryCard({ category, onSelect }: { category: Category; onSelect: ()
 // Main Component
 // ────────────────────────────────────────────────
 export default function FuturenTrepeneurship() {
-  const [selectedCategory, setSelectedCategory]         = useState<Category | null>(null);
-  const [showForm, setShowForm]                         = useState(false);
-  const [formData, setFormData]                         = useState(EMPTY_FORM);
-  const [errors, setErrors]                             = useState<Record<string, string>>({});
-  const [isSubmitting, setIsSubmitting]                 = useState(false);
-  const [registrationComplete, setRegistrationComplete] = useState(false);
-  const [uniqueId, setUniqueId]                         = useState('');
-  const [submitError, setSubmitError]                   = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
+  const [showForm, setShowForm]                 = useState(false);
+  const [formData, setFormData]                 = useState(EMPTY_FORM);
+  const [errors, setErrors]                     = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting]         = useState(false);
+  const [submitError, setSubmitError]           = useState('');
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -405,7 +359,7 @@ export default function FuturenTrepeneurship() {
     try {
       const newUniqueId = generateUniqueId();
 
-      // Save registration first
+      // Save registration to Firebase first
       await saveRegistration(
         {
           fullName:       formData.fullName,
@@ -419,13 +373,16 @@ export default function FuturenTrepeneurship() {
         newUniqueId
       );
 
-      // Build success URL - where users should land after payment
-      const successUrl = `${window.location.origin}/futurentrepreneurship26?` +
+      console.log('✅ Registration saved, redirecting to payment...');
+
+      // Build callback URL - where users land after payment
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+      const callbackUrl = `${baseUrl}/payment-success?` +
         `reference=${encodeURIComponent(newUniqueId)}` +
         `&status=success` +
         `&category=${encodeURIComponent(selectedCategory.id)}`;
 
-      // Add to payment link
+      // Build payment URL
       const paymentUrl = new URL(selectedCategory.paymentLink);
       
       // User data
@@ -437,166 +394,34 @@ export default function FuturenTrepeneurship() {
       // Reference
       paymentUrl.searchParams.append('reference', newUniqueId);
       
-      // Metadata
+      // ⭐ CRITICAL: Metadata for webhook (triggers email)
       paymentUrl.searchParams.append('metadata[registration_id]', newUniqueId);
       paymentUrl.searchParams.append('metadata[category]', selectedCategory.name);
       paymentUrl.searchParams.append('metadata[category_id]', selectedCategory.id);
       
-      // ⭐ KEY: Redirect URL
-      paymentUrl.searchParams.append('callback_url', successUrl);
+      // ⭐ Callback URL - where user is redirected after payment
+      paymentUrl.searchParams.append('callback_url', callbackUrl);
 
-
-      // Store data in sessionStorage for post-payment verification
-      sessionStorage.setItem('pendingRegistration', JSON.stringify({
-        uniqueId: newUniqueId,
-        email: formData.email,
-        fullName: formData.fullName,
-        categoryName: selectedCategory.name,
-        categoryId: selectedCategory.id,
-        price: selectedCategory.price,
-      }));
+      console.log('💳 Redirecting to Paystack payment...');
+      console.log('📧 Email will be triggered by webhook after successful payment');
 
       // Redirect to Paystack payment page
       window.location.href = paymentUrl.toString();
       
     } catch (error) {
-      console.error('Registration error:', error);
+      console.error('❌ Registration error:', error);
       setSubmitError('Registration failed. Please try again or contact support.');
       setIsSubmitting(false);
     }
   };
 
-  // Check for payment callback on component mount
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const reference = urlParams.get('reference');
-    const status = urlParams.get('status');
-
-    if (reference && status === 'success') {
-      const pendingData = sessionStorage.getItem('pendingRegistration');
-      if (pendingData) {
-        const data = JSON.parse(pendingData);
-        
-        // Determine if pitch deck link should be included
-        const includePitchDeck = data.categoryId !== 'self-funded';
-        
-        // Send confirmation email
-        sendConfirmationEmail(
-          data.email,
-          data.fullName,
-          data.uniqueId,
-          data.categoryName,
-          data.price,
-          includePitchDeck
-        ).catch(err => console.warn('Email sending failed:', err));
-
-        // Set state for success screen
-        setUniqueId(data.uniqueId);
-        setFormData({
-          fullName: data.fullName,
-          email: data.email,
-          phone: '',
-          areaOfInterest: '',
-          category: data.categoryId
-        });
-        setSelectedCategory(CATEGORIES.find(c => c.id === data.categoryId) || null);
-        setRegistrationComplete(true);
-
-        // Clear stored data
-        sessionStorage.removeItem('pendingRegistration');
-        
-        // Clean up URL
-        window.history.replaceState({}, '', window.location.pathname);
-      }
-    }
-  }, []);
-
   const reset = () => {
-    setRegistrationComplete(false);
     setShowForm(false);
     setSelectedCategory(null);
     setFormData(EMPTY_FORM);
     setErrors({});
     setSubmitError('');
   };
-
-  // ─── SUCCESS SCREEN ──────────────────────────
-  if (registrationComplete && selectedCategory) {
-    const pitchUrl =
-      `/pitchdeck?id=${encodeURIComponent(uniqueId)}` +
-      `&name=${encodeURIComponent(formData.fullName)}` +
-      `&email=${encodeURIComponent(formData.email)}` +
-      `&category=${encodeURIComponent(selectedCategory.name)}`;
-    
-    const showPitchDeck = selectedCategory.id !== 'self-funded';
-
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50/60 flex items-center justify-center p-3 xs:p-4 sm:p-6">
-        <div className="max-w-2xl w-full bg-white rounded-2xl sm:rounded-3xl shadow-2xl p-5 xs:p-6 sm:p-8 md:p-10 text-center border border-gray-100">
-          <div className="w-16 h-16 xs:w-20 xs:h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-full flex items-center justify-center mx-auto mb-5 xs:mb-6 sm:mb-8 animate-pulse">
-            <Check className="w-10 h-10 xs:w-12 xs:h-12 sm:w-14 sm:h-14 text-white" />
-          </div>
-          <h2 className="text-2xl xs:text-3xl sm:text-4xl font-bold text-gray-900 mb-2 xs:mb-3 sm:mb-4 px-2">
-            Registration Confirmed!
-          </h2>
-          <p className="text-sm xs:text-base sm:text-lg text-gray-600 mb-5 xs:mb-6 sm:mb-8 px-2">
-            Thank you for joining FuturenTrepeneurship NYSC 2026
-          </p>
-
-          <div className="bg-gradient-to-br from-emerald-50 to-teal-50 border-2 border-emerald-200 rounded-xl sm:rounded-2xl p-5 xs:p-6 sm:p-8 mb-5 xs:mb-6 sm:mb-8">
-            <p className="text-[10px] xs:text-xs sm:text-sm text-gray-600 mb-2 sm:mb-3 uppercase tracking-wider font-semibold">
-              Your Registration ID
-            </p>
-            <p className="text-2xl xs:text-3xl sm:text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-600 break-all px-2">
-              {uniqueId}
-            </p>
-          </div>
-
-          <div className="bg-teal-50 rounded-xl sm:rounded-2xl p-4 xs:p-5 sm:p-7 mb-5 xs:mb-6 sm:mb-8 text-left border border-teal-100">
-            <h3 className="font-bold text-gray-900 mb-3 sm:mb-4 text-sm xs:text-base sm:text-lg">Summary</h3>
-            <div className="space-y-2 sm:space-y-3 text-xs xs:text-sm sm:text-base text-gray-700">
-              <p className="break-words"><span className="font-medium">Name:</span> {formData.fullName}</p>
-              <p className="break-all"><span className="font-medium">Email:</span> {formData.email}</p>
-              <p><span className="font-medium">Plan:</span> <span className="font-semibold text-emerald-700">{selectedCategory.name}</span></p>
-              <p><span className="font-medium">Amount Paid:</span> <span className="font-bold">{selectedCategory.price}</span></p>
-            </div>
-          </div>
-
-          <p className="text-[10px] xs:text-xs sm:text-sm text-gray-500 mb-4 xs:mb-5 sm:mb-6 px-2 leading-relaxed">
-            A confirmation email (with your Registration ID) has been sent to <strong className="break-all">{formData.email}</strong>.<br />
-            Keep your ID safe — you'll need it for future reference.
-          </p>
-
-          {showPitchDeck && (
-            <div className="mb-4 xs:mb-5 sm:mb-6 space-y-2 xs:space-y-3">
-              <a
-                href={pitchUrl}
-                className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-5 xs:px-6 sm:px-8 py-2.5 xs:py-3 rounded-lg xs:rounded-xl font-semibold hover:from-blue-700 hover:to-indigo-700 transition shadow-lg text-xs xs:text-sm sm:text-base w-full sm:w-auto"
-              >
-                Submit Your Pitch Deck <ArrowRight className="w-3.5 h-3.5 xs:w-4 xs:h-4 sm:w-5 sm:h-5" />
-              </a>
-              <p className="text-[10px] xs:text-xs text-gray-500">Required for eligibility in business plan competition</p>
-            </div>
-          )}
-
-          {!showPitchDeck && (
-            <div className="mb-4 xs:mb-5 sm:mb-6 bg-amber-50 border border-amber-200 rounded-lg xs:rounded-xl p-3 xs:p-4 sm:p-5">
-              <p className="text-xs xs:text-sm sm:text-base text-amber-900 leading-relaxed">
-                <strong>Self-Funded Track:</strong> You have full access to all program benefits. Your dedicated mentorship will begin shortly after the registration period closes.
-              </p>
-            </div>
-          )}
-
-          <button
-            onClick={reset}
-            className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-6 xs:px-8 sm:px-12 py-2.5 xs:py-3 sm:py-4 rounded-lg xs:rounded-xl font-bold hover:from-emerald-700 hover:to-teal-700 transition shadow-xl hover:shadow-2xl text-sm xs:text-base sm:text-lg w-full sm:w-auto"
-          >
-            Register Another Person
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   // ─── REGISTRATION FORM ───────────────────────
   if (showForm && selectedCategory) {
@@ -686,7 +511,8 @@ export default function FuturenTrepeneurship() {
               </button>
 
               <p className="text-[10px] xs:text-xs sm:text-sm text-center text-gray-500 mt-3 xs:mt-4 leading-relaxed">
-                You will be redirected to Paystack to complete your secure payment
+                You will be redirected to Paystack to complete your secure payment.<br/>
+                A confirmation email will be sent after successful payment.
               </p>
             </form>
           </div>

@@ -1,9 +1,10 @@
+// app/api/send-confirmation-email/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, fullName, uniqueId, categoryName, price, includePitchDeck = true } = await request.json();
+    const { email, fullName, uniqueId, categoryName, categoryId, price } = await request.json();
 
     // Validate required fields
     if (!email || !fullName || !uniqueId || !categoryName || !price) {
@@ -13,29 +14,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Determine if pitch deck link should be included based on category
+    const includePitchDeck = categoryId !== 'self-funded';
+
     // Create nodemailer transporter
-    // Configure with your SMTP settings
     const transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
       port: parseInt(process.env.SMTP_PORT || '587'),
-      secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
+      secure: process.env.SMTP_SECURE === 'true',
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASSWORD,
       },
     });
 
-    // Build the pitch deck URL - use /pitchdeck route
+    // Build the pitch deck URL
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://quietshelter.org';
     const pitchDeckUrl = `${baseUrl}/pitchdeck?id=${encodeURIComponent(uniqueId)}&name=${encodeURIComponent(fullName)}&email=${encodeURIComponent(email)}&category=${encodeURIComponent(categoryName)}`;
 
-    // Conditional content based on includePitchDeck
+    // Conditional content based on category
     const pitchDeckSection = includePitchDeck ? `
       <div class="next-steps">
         <h3>🚀 What's Next?</h3>
         <ul>
           <li><strong>Submit Your Pitch Deck:</strong> Click the button below to submit your business pitch deck using your Registration ID</li>
-          <li><strong>Complete Payment:</strong> Ensure your registration fee (${price}) is paid to secure your spot</li>
+          <li><strong>Payment Confirmed:</strong> Your registration fee (${price}) has been successfully processed</li>
           <li><strong>Training Schedule:</strong> You'll receive an email with training dates and platform access details</li>
           <li><strong>Stay Connected:</strong> Check your email regularly for important program announcements</li>
         </ul>
@@ -48,12 +51,12 @@ export async function POST(request: NextRequest) {
       </div>
       
       <div class="warning">
-        <p><strong>⏰ Important:</strong> The pitch deck submission deadline will be communicated separately. Don't wait until the last minute!</p>
+        <p><strong>⏰ Important:</strong> Submit your pitch deck to be eligible for the business plan competition and funding opportunities!</p>
       </div>
     ` : `
       <div class="next-steps" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-left: 4px solid #f59e0b;">
-        <h3>✅ Self-Funded Track Confirmed</h3>
-        <p><strong>As a self-funded participant, you have full access to all program benefits including:</strong></p>
+        <h3>✅ Self-Funded Track - Payment Confirmed</h3>
+        <p><strong>Your payment of ${price} has been successfully processed. You now have full access to:</strong></p>
         <ul>
           <li><strong>Complete Training Modules:</strong> Access to all entrepreneurship training content</li>
           <li><strong>Dedicated Mentorship:</strong> One-on-one guidance from experienced entrepreneurs</li>
@@ -67,7 +70,7 @@ export async function POST(request: NextRequest) {
       <div class="next-steps">
         <h3>🚀 What's Next?</h3>
         <ul>
-          <li><strong>Complete Payment:</strong> Ensure your registration fee (${price}) is paid to secure your spot</li>
+          <li><strong>Payment Confirmed:</strong> Your registration fee (${price}) has been successfully processed</li>
           <li><strong>Training Schedule:</strong> You'll receive an email with training dates and platform access details</li>
           <li><strong>Mentorship Assignment:</strong> We'll match you with an experienced mentor in your industry</li>
           <li><strong>Stay Connected:</strong> Check your email regularly for important program announcements</li>
@@ -85,10 +88,13 @@ export async function POST(request: NextRequest) {
           <style>
             body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f3f4f6; }
             .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
-            .header { background: linear-gradient(135deg, #059669 0%, #0d9488 100%); color: white; padding: 30px; text-align: center; border-radius: 0; }
+            .header { background: linear-gradient(135deg, #059669 0%, #0d9488 100%); color: white; padding: 30px; text-align: center; }
             .header h1 { margin: 0; font-size: 28px; }
             .header p { margin: 10px 0 0 0; font-size: 18px; opacity: 0.95; }
             .content { padding: 30px; }
+            .success-badge { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 20px; border-radius: 12px; text-align: center; margin: 25px 0; }
+            .success-badge h2 { margin: 0; font-size: 24px; }
+            .success-badge p { margin: 10px 0 0 0; font-size: 16px; }
             .registration-id { background: linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 100%); border: 2px solid #14b8a6; border-radius: 12px; padding: 25px; margin: 25px 0; text-align: center; }
             .registration-id-label { font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; }
             .registration-id-value { font-size: 36px; font-weight: bold; color: #059669; margin: 15px 0; font-family: 'Courier New', monospace; letter-spacing: 2px; }
@@ -122,23 +128,28 @@ export async function POST(request: NextRequest) {
         <body>
           <div class="container">
             <div class="header">
-              <h1>🎉 Registration Confirmed!</h1>
+              <h1>🎉 Payment Confirmed!</h1>
               <p>FuturenTrepeneurship NYSC 2026</p>
             </div>
             
             <div class="content">
+              <div class="success-badge">
+                <h2>✅ Registration Successfully Completed</h2>
+                <p>Your payment has been processed and your spot is secured!</p>
+              </div>
+              
               <p>Dear <strong>${fullName}</strong>,</p>
               
-              <p>Congratulations! Your registration for the <strong>FuturenTrepeneurship Youth Empowerment & Development Program</strong> has been successfully confirmed.</p>
+              <p>Congratulations! Your payment for the <strong>FuturenTrepeneurship Youth Empowerment & Development Program</strong> has been successfully processed, and your registration is now complete.</p>
               
               <div class="registration-id">
                 <div class="registration-id-label">YOUR REGISTRATION ID</div>
                 <div class="registration-id-value">${uniqueId}</div>
-                <p class="id-note">⚠️ Keep this ID safe for future reference</p>
+                <p class="id-note">⚠️ Keep this ID safe - you'll need it for pitch deck submission</p>
               </div>
               
               <div class="details">
-                <h3>📋 Registration Summary</h3>
+                <h3>📋 Payment Summary</h3>
                 <div class="details-row">
                   <span class="label">Name:</span>
                   <span class="value">${fullName}</span>
@@ -152,8 +163,12 @@ export async function POST(request: NextRequest) {
                   <span class="value">${categoryName}</span>
                 </div>
                 <div class="details-row">
-                  <span class="label">Registration Fee:</span>
+                  <span class="label">Amount Paid:</span>
                   <span class="value"><strong>${price}</strong></span>
+                </div>
+                <div class="details-row">
+                  <span class="label">Status:</span>
+                  <span class="value" style="color: #059669; font-weight: bold;">✅ PAID</span>
                 </div>
               </div>
               
@@ -169,7 +184,7 @@ export async function POST(request: NextRequest) {
             <div class="footer">
               <p><strong>© 2026 Quiet Shelter Empowerment Foundation (QuiSEF)</strong></p>
               <p>Empowering the next generation of Nigerian entrepreneurs</p>
-              <p style="margin-top: 15px; font-size: 12px;">This email was sent to ${email} because you registered for FuturenTrepeneurship NYSC 2026.</p>
+              <p style="margin-top: 15px; font-size: 12px;">This email was sent to ${email} because your payment was successfully processed.</p>
             </div>
           </div>
         </body>
@@ -178,40 +193,47 @@ export async function POST(request: NextRequest) {
 
     // Plain text version
     const textContent = `
-Registration Confirmed - FuturenTrepeneurship NYSC 2026
+Payment Confirmed - FuturenTrepeneurship NYSC 2026
 
 Dear ${fullName},
 
-Congratulations! Your registration has been successfully confirmed.
+✅ REGISTRATION SUCCESSFULLY COMPLETED
+Your payment has been processed and your spot is secured!
 
 YOUR REGISTRATION ID: ${uniqueId}
-(Keep this ID safe for future reference)
+(Keep this ID safe - you'll need it for pitch deck submission)
 
-REGISTRATION SUMMARY:
+PAYMENT SUMMARY:
 - Name: ${fullName}
 - Email: ${email}
 - Category: ${categoryName}
-- Registration Fee: ${price}
+- Amount Paid: ${price}
+- Status: ✅ PAID
 
 ${includePitchDeck ? `
 WHAT'S NEXT?
-1. Submit Your Pitch Deck using your Registration ID
-2. Complete your payment (${price}) to secure your spot
+1. Submit Your Pitch Deck using your Registration ID: ${pitchDeckUrl}
+2. Payment Confirmed: Your fee (${price}) has been successfully processed
 3. Watch for training schedule and access details
 4. Check your email regularly for program updates
 
-Submit your pitch deck here: ${pitchDeckUrl}
+⏰ Important: Submit your pitch deck to be eligible for the business plan competition and funding opportunities!
 ` : `
-SELF-FUNDED TRACK CONFIRMED:
-You have full access to all program benefits including complete training modules, dedicated mentorship, business plan competition eligibility, alumni network access, and graduation ceremony participation.
+SELF-FUNDED TRACK - PAYMENT CONFIRMED
+Your payment of ${price} has been successfully processed. You now have full access to:
+- Complete Training Modules
+- Dedicated Mentorship
+- Business Plan Competition eligibility
+- Alumni Network access
+- Graduation Ceremony participation
 
-Your dedicated mentor will contact you shortly after the registration period closes (March 9, 2026).
+Your dedicated mentor will contact you shortly after March 9, 2026.
 
 WHAT'S NEXT?
-1. Complete your payment (${price}) to secure your spot
-2. Watch for training schedule and access details
-3. Await mentorship assignment
-4. Check your email regularly for program updates
+1. Payment Confirmed: ${price} successfully processed
+2. Training schedule will be sent to your email
+3. Mentorship assignment in progress
+4. Stay tuned for program updates
 `}
 
 If you have any questions, contact us at support@quietshelter.org
@@ -227,16 +249,25 @@ Quiet Shelter Empowerment Foundation (QuiSEF)
     await transporter.sendMail({
       from: `"FuturenTrepeneurship" <${process.env.SMTP_FROM_EMAIL}>`,
       to: email,
-      subject: `✅ Registration Confirmed - ${uniqueId} | FuturenTrepeneurship NYSC 2026`,
+      subject: `✅ Payment Confirmed - ${uniqueId} | FuturenTrepeneurship NYSC 2026`,
       html: htmlContent,
       text: textContent,
     });
 
-    return NextResponse.json({ success: true, message: 'Email sent successfully' });
+    console.log('✅ Confirmation email sent to:', email);
+
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Confirmation email sent successfully' 
+    });
+
   } catch (error) {
-    console.error('Error sending email:', error);
+    console.error('❌ Error sending confirmation email:', error);
     return NextResponse.json(
-      { error: 'Failed to send email', details: error instanceof Error ? error.message : 'Unknown error' },
+      { 
+        error: 'Failed to send email', 
+        details: error instanceof Error ? error.message : 'Unknown error' 
+      },
       { status: 500 }
     );
   }
