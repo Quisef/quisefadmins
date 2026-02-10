@@ -1,19 +1,21 @@
 // lib/registrationService.ts
+import { customAlphabet } from 'nanoid';
 
 /**
  * Generate a unique registration ID
+ * Format: FTE26-XXXXX (5 alphanumeric characters)
  */
 export function generateUniqueId(): string {
-  const timestamp = Date.now().toString(36);
-  const randomStr = Math.random().toString(36).substring(2, 9);
-  return `FTE26-${timestamp}-${randomStr}`.toUpperCase();
+  const nanoid = customAlphabet('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', 5);
+  return `FTE26-${nanoid()}`;
 }
 
 /**
- * Save registration data to your database
+ * Save registration to Firebase via API
+ * Called before redirecting to payment
  */
 export async function saveRegistration(
-  data: {
+  registrationData: {
     fullName: string;
     email: string;
     phone: string;
@@ -22,75 +24,51 @@ export async function saveRegistration(
     categoryName: string;
     price: string;
   },
-  uniqueId: string
-): Promise<boolean> {
+  registrationId: string
+): Promise<void> {
   try {
-    // Replace with your actual API endpoint
+    console.log('💾 Saving registration:', registrationId);
+
     const response = await fetch('/api/registrations', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        ...data,
-        registrationId: uniqueId,
-        registeredAt: new Date().toISOString(),
+        ...registrationData,
+        registrationId,
       }),
     });
 
-    if (!response.ok) {
-      throw new Error('Failed to save registration');
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || 'Failed to save registration');
     }
 
-    return true;
+    console.log('✅ Registration saved successfully');
   } catch (error) {
-    console.error('Error saving registration:', error);
+    console.error('❌ Error saving registration:', error);
     throw error;
   }
 }
 
 /**
- * Send confirmation email with conditional pitch deck link
- * @param email - Recipient email
- * @param fullName - Recipient name
- * @param registrationId - Unique registration ID
- * @param categoryName - Selected category name
- * @param price - Amount paid
- * @param includePitchDeck - Whether to include pitch deck link (false for self-funded)
+ * Get registration by ID
+ * Used by payment success page
  */
-export async function sendConfirmationEmail(
-  email: string,
-  fullName: string,
-  registrationId: string,
-  categoryName: string,
-  price: string,
-  includePitchDeck: boolean = true
-): Promise<boolean> {
+export async function getRegistration(registrationId: string) {
   try {
-    // Call your actual API endpoint
-    const response = await fetch('/api/send-confirmation', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        email,
-        fullName,
-        uniqueId: registrationId,
-        categoryName,
-        price,
-        includePitchDeck, // Pass the conditional parameter
-      }),
-    });
+    const response = await fetch(`/api/registrations?id=${encodeURIComponent(registrationId)}`);
+    const result = await response.json();
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to send email');
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || 'Failed to get registration');
     }
 
-    return true;
+    return result.data;
   } catch (error) {
-    console.error('Error sending confirmation email:', error);
-    return false;
+    console.error('❌ Error fetching registration:', error);
+    throw error;
   }
 }

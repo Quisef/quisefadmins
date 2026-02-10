@@ -1,7 +1,7 @@
 // app/api/registrations/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/firebase';
-import { collection, doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 
 /**
  * Registration API Endpoint (Firebase)
@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
 
 /**
  * GET endpoint - Retrieve registration by ID
- * Optional: For checking registration status
+ * Used by payment success page to display registration details
  */
 export async function GET(request: NextRequest) {
   try {
@@ -122,21 +122,34 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    console.log('📖 Fetching registration:', registrationId);
+
     // Fetch from Firestore
-    const { getDoc } = await import('firebase/firestore');
     const docRef = doc(db, 'registrations', registrationId);
     const docSnap = await getDoc(docRef);
 
     if (!docSnap.exists()) {
+      console.log('❌ Registration not found:', registrationId);
       return NextResponse.json(
         { success: false, error: 'Registration not found' },
         { status: 404 }
       );
     }
 
+    const data = docSnap.data();
+    console.log('✅ Registration found:', registrationId);
+
+    // Convert Firestore Timestamp to ISO string for JSON serialization
+    const responseData = {
+      ...data,
+      createdAt: data.createdAt?.toDate?.()?.toISOString() || null,
+      updatedAt: data.updatedAt?.toDate?.()?.toISOString() || null,
+      paidAt: data.paidAt?.toDate?.()?.toISOString() || null,
+    };
+
     return NextResponse.json({
       success: true,
-      data: docSnap.data(),
+      data: responseData,
     });
 
   } catch (error) {
@@ -146,6 +159,7 @@ export async function GET(request: NextRequest) {
       {
         success: false,
         error: 'Failed to retrieve registration',
+        details: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     );

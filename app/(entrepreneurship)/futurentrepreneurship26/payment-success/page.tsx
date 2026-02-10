@@ -21,24 +21,32 @@ function PaymentSuccessContent() {
     }
 
     // Fetch registration data to display
-    fetch(`/api/registrations?id=${reference}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
+    const fetchRegistration = async () => {
+      try {
+        const res = await fetch(`/api/registrations?id=${encodeURIComponent(reference)}`);
+        const data = await res.json();
+        
+        if (!res.ok) {
+          throw new Error(data.error || 'Failed to fetch registration');
+        }
+        
+        if (data.success && data.data) {
           setRegistrationData({
             ...data.data,
             categoryId: categoryId || data.data.category
           });
         } else {
-          setError('Registration not found');
+          setError(data.error || 'Registration not found');
         }
-        setLoading(false);
-      })
-      .catch(err => {
+      } catch (err) {
         console.error('Error fetching registration:', err);
-        setError('Failed to load registration details');
+        setError(err instanceof Error ? err.message : 'Failed to load registration details');
+      } finally {
         setLoading(false);
-      });
+      }
+    };
+
+    fetchRegistration();
   }, [searchParams]);
 
   if (loading) {
