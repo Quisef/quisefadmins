@@ -20,33 +20,25 @@ function PaymentSuccessContent() {
       return;
     }
 
-    // Fetch registration data to display
-    const fetchRegistration = async () => {
-      try {
-        const res = await fetch(`/api/registrations?id=${encodeURIComponent(reference)}`);
-        const data = await res.json();
-        
-        if (!res.ok) {
-          throw new Error(data.error || 'Failed to fetch registration');
-        }
-        
-        if (data.success && data.data) {
+    // Fetch registration data
+    fetch(`/api/registrations?id=${reference}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
           setRegistrationData({
             ...data.data,
             categoryId: categoryId || data.data.category
           });
         } else {
-          setError(data.error || 'Registration not found');
+          setError('Registration not found');
         }
-      } catch (err) {
-        console.error('Error fetching registration:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load registration details');
-      } finally {
         setLoading(false);
-      }
-    };
-
-    fetchRegistration();
+      })
+      .catch(err => {
+        console.error('Error fetching registration:', err);
+        setError('Failed to load registration details');
+        setLoading(false);
+      });
   }, [searchParams]);
 
   if (loading) {
@@ -82,7 +74,7 @@ function PaymentSuccessContent() {
             href="/futurentrepreneurship26"
             className="inline-block bg-red-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-red-700 transition shadow-lg"
           >
-            Return to Home
+            Return to Registration
           </a>
         </div>
       </div>
@@ -240,7 +232,7 @@ function PaymentSuccessContent() {
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-3 xs:gap-4">
           <a
-            href="/futurentrepreneaurship26"
+            href="/futurentrepreneurship26"
             className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-6 xs:px-8 py-3 xs:py-4 rounded-lg xs:rounded-xl font-bold hover:from-emerald-700 hover:to-teal-700 transition shadow-lg hover:shadow-xl text-center text-sm xs:text-base sm:text-lg"
           >
             Return to Home

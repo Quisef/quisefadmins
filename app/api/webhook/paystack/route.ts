@@ -1,4 +1,4 @@
-// app/api/webhook/paystack/route.ts
+// app/api/paystack-webhook/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { db } from '@/lib/firebase';
@@ -27,6 +27,7 @@ export async function POST(request: NextRequest) {
     }
     
     console.log('✅ Webhook signature verified');
+    console.log('📦 Event type:', payload.event);
     
     // Handle different event types
     const event = payload.event;
@@ -62,28 +63,36 @@ async function handleSuccessfulPayment(data: any) {
   try {
     console.log('💰 Processing successful payment...');
     
-    const metadata = data.metadata;
-    const registrationId = metadata?.registration_id;
-    const categoryId = metadata?.category_id;
+    // Get registration ID from reference (not metadata)
+    // When using Paystack API, the reference is in data.reference
+    const registrationId = data.reference;
+    
+    // Get category from metadata
+    const metadata = data.metadata || {};
+    const categoryId = metadata.category_id;
+    const categoryName = metadata.category;
+    const fullName = metadata.full_name;
     
     if (!registrationId) {
-      console.error('❌ No registration ID in metadata');
+      console.error('❌ No registration ID in payment data');
       return;
     }
     
-    console.log(`📝 Registration ID: ${registrationId}`);
-    console.log(`🏷️ Category ID: ${categoryId}`);
+    console.log('📝 Registration ID:', registrationId);
+    console.log('🏷️ Category ID:', categoryId);
+    console.log('📛 Category Name:', categoryName);
     
     // Get the registration from Firebase
     const docRef = doc(db, 'registrations', registrationId);
     const docSnap = await getDoc(docRef);
     
     if (!docSnap.exists()) {
-      console.error('❌ Registration not found in database');
+      console.error('❌ Registration not found in database:', registrationId);
       return;
     }
     
     const registrationData = docSnap.data();
+    console.log('📄 Found registration for:', registrationData.fullName);
     
     // Update the registration with payment details
     await updateDoc(docRef, {
@@ -104,7 +113,7 @@ async function handleSuccessfulPayment(data: any) {
       fullName: registrationData.fullName,
       uniqueId: registrationId,
       categoryName: registrationData.categoryName,
-      categoryId: registrationData.category,
+      categoryId: registrationData.category, // Use category from database
       price: registrationData.price,
     });
     
@@ -120,16 +129,22 @@ async function handleFailedPayment(data: any) {
   try {
     console.log('⚠️ Processing failed payment...');
     
-    const metadata = data.metadata;
-    const registrationId = metadata?.registration_id;
+    const registrationId = data.reference;
     
     if (!registrationId) {
-      console.error('❌ No registration ID in metadata');
+      console.error('❌ No registration ID in failed payment');
       return;
     }
     
     // Update the registration in Firebase
     const docRef = doc(db, 'registrations', registrationId);
+    const docSnap = await getDoc(docRef);
+    
+    if (!docSnap.exists()) {
+      console.error('❌ Registration not found for failed payment:', registrationId);
+      return;
+    }
+    
     await updateDoc(docRef, {
       paymentStatus: 'failed',
       paymentReference: data.reference,
@@ -158,7 +173,13 @@ async function sendConfirmationEmail(params: {
   price: string;
 }) {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    console.log('📧 Sending confirmation email to:', params.email);
+    console.log('📋 Email params:', {
+      categoryId: params.categoryId,
+      showPitchDeck: params.categoryId !== 'self-funded'
+    });
+    
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http:quietshelter.org';
     
     const response = await fetch(`${baseUrl}/api/send-confirmation-email`, {
       method: 'POST',
@@ -170,11 +191,13 @@ async function sendConfirmationEmail(params: {
     
     if (!response.ok) {
       const error = await response.json();
-      console.error('❌ Email sending failed:', error);
+      console.error('❌ Email API error:', error);
       throw new Error('Failed to send confirmation email');
     }
     
-    console.log('✅ Confirmation email sent successfully');
+    const result = await response.json();
+    console.log('✅ Email API response:', result);
+    console.log('✅ Confirmation email sent successfully to:', params.email);
     
   } catch (error) {
     console.error('❌ Error sending confirmation email:', error);

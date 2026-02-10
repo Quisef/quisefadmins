@@ -12,16 +12,6 @@ import {
 } from '@/lib/registrationService';
 
 // ────────────────────────────────────────────────
-// PAYSTACK PAYMENT LINKS INTEGRATION
-// ────────────────────────────────────────────────
-// Payment links for different categories:
-// - ₦20,000 categories (Fully Funded, Partially Funded, Basic): 
-//   https://paystack.shop/pay/EntrepreneurshipProgramPayment
-// - ₦70,000 category (Self-Funded):
-//   https://paystack.shop/pay/Self_Funded
-// ────────────────────────────────────────────────
-
-// ────────────────────────────────────────────────
 // Static data
 // ────────────────────────────────────────────────
 const BENEFITS = [
@@ -64,7 +54,6 @@ const CATEGORIES = [
     type: 'Competitive', 
     slots: 100, 
     price: '₦20,000',
-    paymentLink: 'https://paystack.shop/pay/testingx',
     color: 'bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-200', 
     badge: 'bg-emerald-600',
     benefits: ['Full access to training modules','Dedicated mentorship program','Business plan competition → Grant eligible','Lifetime Alumni Network access','Graduation ceremony (transport + accommodation)','100% Program Fee Discount'],
@@ -76,7 +65,6 @@ const CATEGORIES = [
     type: 'Competitive', 
     slots: 100, 
     price: '₦20,000',
-    paymentLink: 'https://paystack.shop/pay/EntrepreneurshipProgramPayment',
     color: 'bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200', 
     badge: 'bg-blue-600',
     benefits: ['Full access to training modules','Dedicated mentorship program','Business plan competition → Seed funding','Lifetime Alumni Network access','Graduation ceremony attendance','100% Program Fee Discount'],
@@ -88,7 +76,6 @@ const CATEGORIES = [
     type: 'Standard', 
     slots: 100, 
     price: '₦20,000',
-    paymentLink: 'https://paystack.shop/pay/EntrepreneurshipProgramPayment',
     color: 'bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200', 
     badge: 'bg-purple-600',
     benefits: ['Core training modules','Alumni Network access','Graduation ceremony attendance','Business plan competition (performance-based)','100% Program Fee Discount'],
@@ -100,7 +87,6 @@ const CATEGORIES = [
     type: 'Grantee Selection', 
     slots: 100, 
     price: '₦70,000',
-    paymentLink: 'https://paystack.shop/pay/Self_Funded',
     color: 'bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200', 
     badge: 'bg-amber-600',
     benefits: ['Full access to training modules','Dedicated mentorship program','Business plan competition → Grant eligible','Lifetime Alumni Network access','Graduation ceremony attendance','₦20,000 Registration + ₦50,000 Program Fee'],
@@ -113,7 +99,7 @@ type Category = typeof CATEGORIES[number];
 const EMPTY_FORM = { fullName: '', email: '', phone: '', areaOfInterest: '', category: '' };
 
 // ────────────────────────────────────────────────
-// Countdown Timer - Enhanced Mobile Responsive
+// Countdown Timer
 // ────────────────────────────────────────────────
 function CountdownTimer({ targetDate }: { targetDate: string }) {
   const [time, setTime] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
@@ -159,7 +145,7 @@ function CountdownTimer({ targetDate }: { targetDate: string }) {
 }
 
 // ────────────────────────────────────────────────
-// Benefits Carousel - Enhanced Mobile Responsive
+// Benefits Carousel
 // ────────────────────────────────────────────────
 function BenefitsCarousel() {
   const [index, setIndex] = useState(0);
@@ -184,12 +170,9 @@ function BenefitsCarousel() {
 
   return (
     <div className="relative rounded-2xl sm:rounded-3xl p-6 sm:p-8 md:p-10 lg:p-12 text-white overflow-hidden shadow-2xl my-12 sm:my-16 md:my-20">
-      {/* Background Image with Overlay */}
       <div 
         className="absolute inset-0 bg-cover bg-center"
-        style={{
-          backgroundImage: "url('https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=2070&auto=format&fit=crop')",
-        }}
+        style={{ backgroundImage: "url('https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=2070&auto=format&fit=crop')" }}
       />
       <div className="absolute inset-0 bg-gradient-to-br from-emerald-900/95 via-teal-900/95 to-emerald-800/95" />
       
@@ -253,7 +236,7 @@ function BenefitsCarousel() {
 }
 
 // ────────────────────────────────────────────────
-// Category Card - Enhanced Mobile Responsive
+// Category Card
 // ────────────────────────────────────────────────
 function CategoryCard({ category, onSelect }: { category: Category; onSelect: () => void }) {
   return (
@@ -350,74 +333,77 @@ export default function FuturenTrepeneurship() {
     return Object.keys(errs).length === 0;
   };
 
-  // Fix for the handleSubmit function in your FuturenTrepeneurship component
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm() || !selectedCategory) return;
+
     setIsSubmitting(true);
     setSubmitError('');
 
     try {
       const newUniqueId = generateUniqueId();
 
-      // Save registration to Firebase first
+      // 1. Save registration to Firestore
       await saveRegistration(
         {
-          fullName:       formData.fullName,
-          email:          formData.email,
-          phone:          formData.phone,
+          fullName: formData.fullName,
+          email: formData.email,
+          phone: formData.phone,
           areaOfInterest: formData.areaOfInterest,
-          category:       formData.category,
-          categoryName:   selectedCategory.name,
-          price:          selectedCategory.price,
+          category: formData.category,
+          categoryName: selectedCategory.name,
+          price: selectedCategory.price,
         },
         newUniqueId
       );
 
-      console.log('✅ Registration saved, redirecting to payment...');
+      console.log('✅ Registration saved, initializing Paystack payment...');
 
-      // Build callback URL - where users land after payment
+      // 2. Build callback URL
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
-      
-      // ⭐ CRITICAL FIX: Include reference in callback URL
       const callbackUrl = `${baseUrl}/futurentrepreneurship26/payment-success?` +
-        `reference=${encodeURIComponent(newUniqueId)}&` +  // ← THIS WAS MISSING!
+        `reference=${encodeURIComponent(newUniqueId)}&` +
         `status=success&` +
         `category=${encodeURIComponent(selectedCategory.id)}`;
 
-      console.log('🔗 Callback URL:', callbackUrl);
+      // 3. Initialize Paystack transaction
+      const res = await fetch('/api/initialize-paystack', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email.trim(),
+          amount: selectedCategory.price === '₦70,000' ? 7000000 : 2000000, // in kobo
+          reference: newUniqueId,
+          callback_url: callbackUrl,
+          metadata: {
+            category: selectedCategory.name,
+            category_id: selectedCategory.id,
+            full_name: formData.fullName,
+            phone: formData.phone,
+            area_of_interest: formData.areaOfInterest,
+          },
+        }),
+      });
 
-      // Build payment URL
-      const paymentUrl = new URL(selectedCategory.paymentLink);
-      
-      // User data
-      paymentUrl.searchParams.append('email', formData.email);
-      paymentUrl.searchParams.append('first_name', formData.fullName.split(' ')[0]);
-      paymentUrl.searchParams.append('last_name', formData.fullName.split(' ').slice(1).join(' ') || '');
-      paymentUrl.searchParams.append('phone', formData.phone);
-      
-      // Reference
-      paymentUrl.searchParams.append('reference', newUniqueId);
-      
-      // ⭐ CRITICAL: Metadata for webhook (triggers email)
-      paymentUrl.searchParams.append('metadata[registration_id]', newUniqueId);
-      paymentUrl.searchParams.append('metadata[category]', selectedCategory.name);
-      paymentUrl.searchParams.append('metadata[category_id]', selectedCategory.id);
-      
-      // ⭐ Callback URL - where user is redirected after payment
-      paymentUrl.searchParams.append('callback_url', callbackUrl);
+      const result = await res.json();
 
-      console.log('💳 Redirecting to Paystack payment...');
-      console.log('📧 Email will be triggered by webhook after successful payment');
-      console.log('Full payment URL:', paymentUrl.toString());
+      if (!res.ok || !result.success || !result.data?.authorization_url) {
+        throw new Error(result.error || 'Failed to initialize payment session');
+      }
 
-      // Redirect to Paystack payment page
-      window.location.href = paymentUrl.toString();
-      
-    } catch (error) {
-      console.error('❌ Registration error:', error);
-      setSubmitError('Registration failed. Please try again or contact support.');
+      // 4. Redirect to Paystack checkout
+      console.log('Redirecting to Paystack checkout:', result.data.authorization_url);
+      window.location.href = result.data.authorization_url;
+
+    } catch (err) {
+      console.error('❌ Payment initialization error:', err);
+      setSubmitError(
+        err instanceof Error 
+          ? err.message 
+          : 'Failed to start payment. Please try again or contact support.'
+      );
       setIsSubmitting(false);
     }
   };
@@ -531,16 +517,12 @@ export default function FuturenTrepeneurship() {
   // ─── MAIN LANDING PAGE ────────────────────────────
   return (
     <div className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-teal-50/40">
-      {/* Hero – With Background Image */}
+      {/* Hero */}
       <div className="relative text-white py-12 xs:py-16 sm:py-24 md:py-32 lg:py-48 px-3 xs:px-4 sm:px-5 overflow-hidden">
-        {/* Background Image */}
         <div 
           className="absolute inset-0 bg-cover bg-center"
-          style={{
-            backgroundImage: "url('https://images.unsplash.com/photo-1557804506-669a67965ba0?q=80&w=2074&auto=format&fit=crop')",
-          }}
+          style={{ backgroundImage: "url('https://images.unsplash.com/photo-1557804506-669a67965ba0?q=80&w=2074&auto=format&fit=crop')" }}
         />
-        {/* Gradient Overlay */}
         <div className="absolute inset-0 bg-gradient-to-br from-emerald-900/95 via-teal-900/90 to-blue-950/95" />
         
         <div className="max-w-7xl mx-auto text-center relative z-10">
@@ -588,7 +570,7 @@ export default function FuturenTrepeneurship() {
       </div>
 
       <main className="max-w-7xl mx-auto px-3 xs:px-4 sm:px-5 py-10 xs:py-12 sm:py-16 md:py-20 lg:py-28">
-        {/* Overview - Enhanced Mobile */}
+        {/* Overview */}
         <section className="bg-white/90 backdrop-blur-sm rounded-xl xs:rounded-2xl sm:rounded-3xl shadow-2xl p-5 xs:p-6 sm:p-8 md:p-12 lg:p-16 mb-10 xs:mb-12 sm:mb-16 md:mb-20 border border-gray-100/80">
           <h2 className="text-2xl xs:text-3xl sm:text-4xl md:text-5xl font-black text-gray-900 mb-5 xs:mb-6 sm:mb-8 md:mb-10 text-center leading-tight px-2">
             Unlock Your Entrepreneurial Future
@@ -638,7 +620,7 @@ export default function FuturenTrepeneurship() {
 
         <BenefitsCarousel />
 
-        {/* Categories - Enhanced Mobile Grid */}
+        {/* Categories */}
         <section id="categories" className="my-12 xs:my-16 sm:my-20 md:my-24 scroll-mt-20">
           <h2 className="text-2xl xs:text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-center text-gray-900 mb-8 xs:mb-10 sm:mb-12 md:mb-16 bg-gradient-to-r from-emerald-700 to-teal-700 bg-clip-text text-transparent px-4 leading-tight">
             Choose Your Path to Success
@@ -658,14 +640,11 @@ export default function FuturenTrepeneurship() {
           </div>
         </section>
 
-        {/* Final CTA - With Background Image */}
+        {/* Final CTA */}
         <div className="relative text-center my-10 xs:my-12 sm:my-16 md:my-20 rounded-xl xs:rounded-2xl sm:rounded-3xl overflow-hidden p-8 xs:p-10 sm:p-16 md:p-20 lg:p-24">
-          {/* Background Image */}
           <div 
             className="absolute inset-0 bg-cover bg-center"
-            style={{
-              backgroundImage: "url('https://images.unsplash.com/photo-1552664730-d307ca884978?q=80&w=2070&auto=format&fit=crop')",
-            }}
+            style={{ backgroundImage: "url('https://images.unsplash.com/photo-1552664730-d307ca884978?q=80&w=2070&auto=format&fit=crop')" }}
           />
           <div className="absolute inset-0 bg-gradient-to-br from-emerald-900/90 to-teal-900/90" />
           
@@ -682,7 +661,7 @@ export default function FuturenTrepeneurship() {
           </div>
         </div>
 
-        {/* Partners - Enhanced Mobile */}
+        {/* Partners */}
         <section className="bg-white rounded-xl xs:rounded-2xl sm:rounded-3xl shadow-xl p-5 xs:p-6 sm:p-8 md:p-12 mb-10 xs:mb-12 sm:mb-16 border border-gray-100">
           <h2 className="text-xl xs:text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-6 xs:mb-8 sm:mb-10 md:mb-12 text-center">
             Our Partners
@@ -704,7 +683,7 @@ export default function FuturenTrepeneurship() {
           </div>
         </section>
 
-        {/* FAQ - Enhanced Mobile */}
+        {/* FAQ */}
         <section className="bg-white rounded-xl xs:rounded-2xl sm:rounded-3xl shadow-xl p-5 xs:p-6 sm:p-8 md:p-12 border border-gray-100">
           <h2 className="text-xl xs:text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-6 xs:mb-8 sm:mb-10 text-center">
             Frequently Asked Questions
