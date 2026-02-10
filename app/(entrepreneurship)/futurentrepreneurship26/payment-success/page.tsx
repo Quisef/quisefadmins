@@ -240,7 +240,7 @@ function PaymentSuccessContent() {
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-3 xs:gap-4">
           <a
-            href="/"
+            href="/futurentrepreneaurship26"
             className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-6 xs:px-8 py-3 xs:py-4 rounded-lg xs:rounded-xl font-bold hover:from-emerald-700 hover:to-teal-700 transition shadow-lg hover:shadow-xl text-center text-sm xs:text-base sm:text-lg"
           >
             Return to Home

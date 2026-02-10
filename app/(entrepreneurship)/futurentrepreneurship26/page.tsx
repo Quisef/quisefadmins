@@ -350,6 +350,8 @@ export default function FuturenTrepeneurship() {
     return Object.keys(errs).length === 0;
   };
 
+  // Fix for the handleSubmit function in your FuturenTrepeneurship component
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm() || !selectedCategory) return;
@@ -377,10 +379,14 @@ export default function FuturenTrepeneurship() {
 
       // Build callback URL - where users land after payment
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
-      const callbackUrl = `${baseUrl}/payment-success?` +
-        `reference=${encodeURIComponent(newUniqueId)}` +
-        `&status=success` +
-        `&category=${encodeURIComponent(selectedCategory.id)}`;
+      
+      // ⭐ CRITICAL FIX: Include reference in callback URL
+      const callbackUrl = `${baseUrl}/futurentrepreneurship26/payment-success?` +
+        `reference=${encodeURIComponent(newUniqueId)}&` +  // ← THIS WAS MISSING!
+        `status=success&` +
+        `category=${encodeURIComponent(selectedCategory.id)}`;
+
+      console.log('🔗 Callback URL:', callbackUrl);
 
       // Build payment URL
       const paymentUrl = new URL(selectedCategory.paymentLink);
@@ -404,6 +410,7 @@ export default function FuturenTrepeneurship() {
 
       console.log('💳 Redirecting to Paystack payment...');
       console.log('📧 Email will be triggered by webhook after successful payment');
+      console.log('Full payment URL:', paymentUrl.toString());
 
       // Redirect to Paystack payment page
       window.location.href = paymentUrl.toString();
