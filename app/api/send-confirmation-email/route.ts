@@ -1,6 +1,8 @@
 // app/api/send-confirmation-email/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,6 +15,9 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    console.log('📧 [EMAIL] Sending confirmation email to:', email);
+    console.log('📋 [EMAIL] Registration ID:', uniqueId);
 
     // Determine if pitch deck link should be included based on category
     const includePitchDeck = categoryId !== 'self-funded';
@@ -28,9 +33,9 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Build the pitch deck URL
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://quietshelter.org';
-    const pitchDeckUrl = `${baseUrl}/pitchdeck?id=${encodeURIComponent(uniqueId)}&name=${encodeURIComponent(fullName)}&email=${encodeURIComponent(email)}&category=${encodeURIComponent(categoryName)}`;
+    // ✅ FIX: Use absolute URL with your actual domain
+    // This ensures the link works regardless of SMTP domain verification
+    const pitchDeckUrl = `https://quietshelter.org/pitchdeck?id=${encodeURIComponent(uniqueId)}&name=${encodeURIComponent(fullName)}&email=${encodeURIComponent(email)}&category=${encodeURIComponent(categoryName)}`;
 
     // Conditional content based on category
     const pitchDeckSection = includePitchDeck ? `
@@ -44,14 +49,19 @@ export async function POST(request: NextRequest) {
         </ul>
       </div>
       
-      <div style="text-align: center;">
-        <a href="${pitchDeckUrl}" class="button">
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${pitchDeckUrl}" class="button" style="display: inline-block; background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%); color: white !important; padding: 15px 35px; text-decoration: none; border-radius: 10px; font-weight: bold; box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3);">
           📊 Submit Your Pitch Deck Now →
         </a>
       </div>
       
       <div class="warning">
         <p><strong>⏰ Important:</strong> Submit your pitch deck to be eligible for the business plan competition and funding opportunities!</p>
+      </div>
+      
+      <div style="margin-top: 20px; padding: 15px; background: #f9fafb; border-radius: 8px; font-size: 12px; color: #6b7280;">
+        <p style="margin: 0;"><strong>Direct Link (copy if button doesn't work):</strong></p>
+        <p style="margin: 5px 0 0 0; word-break: break-all; font-family: monospace;">${pitchDeckUrl}</p>
       </div>
     ` : `
       <div class="next-steps" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-left: 4px solid #f59e0b;">
@@ -122,6 +132,7 @@ export async function POST(request: NextRequest) {
               .registration-id-value { font-size: 28px; }
               .details-row { flex-direction: column; }
               .value { text-align: left; margin-top: 5px; }
+              .button { padding: 12px 25px; font-size: 14px; }
             }
           </style>
         </head>
@@ -191,7 +202,7 @@ export async function POST(request: NextRequest) {
       </html>
     `;
 
-    // Plain text version
+    // Plain text version with absolute URL
     const textContent = `
 Payment Confirmed - FuturenTrepeneurship NYSC 2026
 
@@ -212,7 +223,7 @@ PAYMENT SUMMARY:
 
 ${includePitchDeck ? `
 WHAT'S NEXT?
-1. Submit Your Pitch Deck using your Registration ID: ${pitchDeckUrl}
+1. Submit Your Pitch Deck: ${pitchDeckUrl}
 2. Payment Confirmed: Your fee (${price}) has been successfully processed
 3. Watch for training schedule and access details
 4. Check your email regularly for program updates
@@ -254,7 +265,20 @@ Quiet Shelter Empowerment Foundation (QuiSEF)
       text: textContent,
     });
 
-    console.log('✅ Confirmation email sent to:', email);
+    console.log('✅ [EMAIL] Confirmation email sent to:', email);
+
+    // Update Firestore to track that email was sent
+    try {
+      const docRef = doc(db, 'registrations', uniqueId);
+      await updateDoc(docRef, {
+        emailSent: true,
+        emailSentAt: new Date(),
+        updatedAt: new Date(),
+      });
+      console.log('✅ [EMAIL] Firestore updated: emailSent = true');
+    } catch (firestoreError) {
+      console.error('⚠️ [EMAIL] Could not update Firestore emailSent status:', firestoreError);
+    }
 
     return NextResponse.json({ 
       success: true, 
@@ -262,7 +286,7 @@ Quiet Shelter Empowerment Foundation (QuiSEF)
     });
 
   } catch (error) {
-    console.error('❌ Error sending confirmation email:', error);
+    console.error('❌ [EMAIL] Error sending confirmation email:', error);
     return NextResponse.json(
       { 
         error: 'Failed to send email', 

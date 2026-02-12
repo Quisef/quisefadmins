@@ -3,10 +3,14 @@
 import { useState, useEffect, useMemo } from 'react';
 import { collection, query, orderBy, limit, getDocs, deleteDoc, doc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Download, Search, Filter, Eye, Trash2, AlertTriangle } from 'lucide-react';
+import { 
+  Download, Search, Filter, Eye, Trash2, AlertTriangle, Mail, Send, 
+  CheckCircle, XCircle, Loader2, ChevronDown, ChevronLeft, ChevronRight,
+  DollarSign, Users, TrendingUp, Clock
+} from 'lucide-react';
 
 // ────────────────────────────────────────────────
-// Types - FIXED to match database schema
+// Types
 // ────────────────────────────────────────────────
 interface Registration {
   id: string;
@@ -17,12 +21,16 @@ interface Registration {
   category: string;
   categoryName: string;
   price: string;
-  registrationId: string;      // ← Changed from uniqueId
-  createdAt: Timestamp;         // ← Changed from registrationDate
-  paymentStatus: string;        // ← Changed from status
+  registrationId: string;
+  createdAt: Timestamp;
+  paymentStatus: string;
   paymentReference: string | null;
   paymentMethod: string | null;
   updatedAt: Timestamp;
+  emailSent?: boolean;
+  emailSentAt?: Timestamp;
+  confirmedBy?: 'webhook' | 'admin';
+  manualConfirmation?: boolean;
 }
 
 interface PitchDeck {
@@ -41,23 +49,42 @@ interface PitchDeck {
 }
 
 // ────────────────────────────────────────────────
-// Pagination constants
+// Constants
 // ────────────────────────────────────────────────
 const PAGE_SIZE = 10;
 
 // ────────────────────────────────────────────────
-// Helper – download a CSV string as a file
+// Helper Functions
 // ────────────────────────────────────────────────
 function downloadCSV(csv: string, name: string) {
   const blob = new Blob([csv], { type: 'text/csv' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href     = url;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
   a.download = `${name}_${new Date().toISOString().split('T')[0]}.csv`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+function categoryBadgeClass(name: string) {
+  if (name.includes('Fully Funded')) return 'bg-emerald-100 text-emerald-800';
+  if (name.includes('Partially Funded')) return 'bg-blue-100 text-blue-800';
+  if (name.includes('Basic')) return 'bg-purple-100 text-purple-800';
+  return 'bg-amber-100 text-amber-800';
+}
+
+function statusBadgeClass(status: string) {
+  switch (status) {
+    case 'completed': return 'bg-emerald-100 text-emerald-800';
+    case 'pending': return 'bg-amber-100 text-amber-800';
+    case 'failed': return 'bg-red-100 text-red-800';
+    case 'approved': return 'bg-emerald-100 text-emerald-800';
+    case 'shortlisted': return 'bg-blue-100 text-blue-800';
+    case 'under_review': return 'bg-amber-100 text-amber-800';
+    default: return 'bg-gray-100 text-gray-800';
+  }
 }
 
 // ────────────────────────────────────────────────
@@ -116,6 +143,245 @@ function DeleteModal({
 }
 
 // ────────────────────────────────────────────────
+// Email Confirmation Modal
+// ────────────────────────────────────────────────
+function EmailConfirmModal({ 
+  isOpen, 
+  onClose, 
+  onConfirm, 
+  registration,
+  sending
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  registration: Registration | null;
+  sending: boolean;
+}) {
+  if (!isOpen || !registration) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-scale-up">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+            <Mail className="w-6 h-6 text-blue-600" />
+          </div>
+          <h3 className="text-xl font-bold text-gray-900">Send Confirmation Email</h3>
+        </div>
+        
+        <p className="text-gray-600 mb-4">
+          Send confirmation email to:
+        </p>
+        
+        <div className="bg-gray-50 rounded-lg p-4 mb-6 space-y-2">
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500">Name:</span>
+            <span className="font-semibold text-gray-900">{registration.fullName}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500">Email:</span>
+            <span className="font-semibold text-gray-900">{registration.email}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500">Registration ID:</span>
+            <span className="font-mono font-semibold text-emerald-600">{registration.registrationId}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500">Category:</span>
+            <span className="font-semibold text-gray-900">{registration.categoryName}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500">Amount:</span>
+            <span className="font-semibold text-gray-900">{registration.price}</span>
+          </div>
+        </div>
+
+        {registration.emailSent && registration.emailSentAt && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+            <p className="text-sm text-amber-800">
+              ⚠️ Email was previously sent on {registration.emailSentAt.toDate().toLocaleString()}
+            </p>
+          </div>
+        )}
+        
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            disabled={sending}
+            className="flex-1 px-4 py-3 border border-gray-300 rounded-lg font-semibold text-gray-700 hover:bg-gray-50 transition disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={sending}
+            className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {sending ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Sending...
+              </>
+            ) : (
+              <>
+                <Send className="w-4 h-4" />
+                Send Email
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────
+// Payment Confirmation Modal
+// ────────────────────────────────────────────────
+function PaymentConfirmModal({ 
+  isOpen, 
+  onClose, 
+  onConfirm, 
+  registration,
+  confirming
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  registration: Registration | null;
+  confirming: boolean;
+}) {
+  if (!isOpen || !registration) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-scale-up">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center">
+            <CheckCircle className="w-6 h-6 text-emerald-600" />
+          </div>
+          <h3 className="text-xl font-bold text-gray-900">Confirm Payment Manually</h3>
+        </div>
+        
+        <p className="text-gray-600 mb-4">
+          Manually mark this registration as paid? This will:
+        </p>
+        
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 space-y-2 text-sm">
+          <div className="flex items-start gap-2">
+            <CheckCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+            <span>Update payment status to <strong>completed</strong></span>
+          </div>
+          <div className="flex items-start gap-2">
+            <CheckCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+            <span>Send confirmation email to registrant</span>
+          </div>
+          <div className="flex items-start gap-2">
+            <CheckCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+            <span>Record payment details in system</span>
+          </div>
+        </div>
+
+        <div className="bg-gray-50 rounded-lg p-4 mb-6 space-y-2">
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500">Name:</span>
+            <span className="font-semibold text-gray-900">{registration.fullName}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500">Email:</span>
+            <span className="font-semibold text-gray-900">{registration.email}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500">Registration ID:</span>
+            <span className="font-mono font-semibold text-emerald-600">{registration.registrationId}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500">Amount:</span>
+            <span className="font-semibold text-gray-900">{registration.price}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500">Current Status:</span>
+            <span className="font-semibold text-amber-600 uppercase">{registration.paymentStatus}</span>
+          </div>
+        </div>
+
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+          <p className="text-sm text-amber-800">
+            ⚠️ <strong>Important:</strong> Only confirm if you've verified payment through bank transfer, cash, or other means outside the system.
+          </p>
+        </div>
+        
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            disabled={confirming}
+            className="flex-1 px-4 py-3 border border-gray-300 rounded-lg font-semibold text-gray-700 hover:bg-gray-50 transition disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={confirming}
+            className="flex-1 px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold transition disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {confirming ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              <>
+                <CheckCircle className="w-4 h-4" />
+                Confirm Payment
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────
+// Toast Notification
+// ────────────────────────────────────────────────
+function Toast({ message, type, onClose }: { 
+  message: string; 
+  type: 'success' | 'error' | 'warning'; 
+  onClose: () => void 
+}) {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 5000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  const colors = {
+    success: 'bg-emerald-500',
+    error: 'bg-red-500',
+    warning: 'bg-amber-500',
+  };
+
+  const icons = {
+    success: <CheckCircle className="w-5 h-5 flex-shrink-0" />,
+    error: <XCircle className="w-5 h-5 flex-shrink-0" />,
+    warning: <AlertTriangle className="w-5 h-5 flex-shrink-0" />,
+  };
+
+  return (
+    <div className="fixed top-4 right-4 z-50 animate-slide-in">
+      <div className={`${colors[type]} text-white px-6 py-4 rounded-lg shadow-2xl flex items-center gap-3 max-w-md`}>
+        {icons[type]}
+        <p className="font-medium">{message}</p>
+        <button onClick={onClose} className="ml-2 hover:bg-white/20 rounded p-1">
+          ×
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────
 // Pagination Component
 // ────────────────────────────────────────────────
 function Pagination({ currentPage, totalPages, onPageChange }: {
@@ -130,7 +396,7 @@ function Pagination({ currentPage, totalPages, onPageChange }: {
     for (let i = 1; i <= totalPages; i++) pages.push(i);
   } else {
     pages.push(1);
-    if (currentPage > 3)              pages.push('...');
+    if (currentPage > 3) pages.push('...');
     for (let i = Math.max(2, currentPage - 1); i <= Math.min(totalPages - 1, currentPage + 1); i++) pages.push(i);
     if (currentPage < totalPages - 2) pages.push('...');
     pages.push(totalPages);
@@ -176,43 +442,42 @@ function Pagination({ currentPage, totalPages, onPageChange }: {
 }
 
 // ────────────────────────────────────────────────
-// Badge helpers
-// ────────────────────────────────────────────────
-function categoryBadgeClass(name: string) {
-  if (name.includes('Fully Funded'))      return 'bg-emerald-100 text-emerald-800';
-  if (name.includes('Partially Funded')) return 'bg-blue-100 text-blue-800';
-  if (name.includes('Basic'))            return 'bg-purple-100 text-purple-800';
-  return 'bg-amber-100 text-amber-800';
-}
-
-function statusBadgeClass(status: string) {
-  switch (status) {
-    case 'completed':    return 'bg-emerald-100 text-emerald-800';
-    case 'pending':      return 'bg-amber-100  text-amber-800';
-    case 'failed':       return 'bg-red-100    text-red-800';
-    case 'approved':     return 'bg-emerald-100 text-emerald-800';
-    case 'shortlisted':  return 'bg-blue-100   text-blue-800';
-    case 'under_review': return 'bg-amber-100  text-amber-800';
-    default:             return 'bg-gray-100   text-gray-800';
-  }
-}
-
-// ────────────────────────────────────────────────
-// Admin Dashboard
+// Main Admin Dashboard Component
 // ────────────────────────────────────────────────
 export default function AdminDashboard() {
   const [registrations, setRegistrations] = useState<Registration[]>([]);
-  const [pitchDecks,    setPitchDecks]    = useState<PitchDeck[]>([]);
-  const [loading,       setLoading]       = useState(true);
-  const [error,         setError]         = useState('');
-  const [activeTab,     setActiveTab]     = useState<'registrations' | 'pitchDecks'>('registrations');
-  const [searchTerm,    setSearchTerm]    = useState('');
+  const [pitchDecks, setPitchDecks] = useState<PitchDeck[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [activeTab, setActiveTab] = useState<'registrations' | 'pitchDecks'>('registrations');
+  const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterPaymentStatus, setFilterPaymentStatus] = useState('all');
-  const [deleteModal,   setDeleteModal]   = useState<{ isOpen: boolean; type: 'registration' | 'pitch'; id: string; name: string } | null>(null);
-  const [deleting,      setDeleting]      = useState(false);
-
-  const [regPage,   setRegPage]   = useState(1);
+  
+  // Modal states
+  const [deleteModal, setDeleteModal] = useState<{ 
+    isOpen: boolean; 
+    type: 'registration' | 'pitch'; 
+    id: string; 
+    name: string 
+  } | null>(null);
+  const [emailModal, setEmailModal] = useState<{ 
+    isOpen: boolean; 
+    registration: Registration | null 
+  }>({ isOpen: false, registration: null });
+  const [paymentModal, setPaymentModal] = useState<{ 
+    isOpen: boolean; 
+    registration: Registration | null 
+  }>({ isOpen: false, registration: null });
+  
+  // Action states
+  const [deleting, setDeleting] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [confirmingPayment, setConfirmingPayment] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' } | null>(null);
+  
+  // Pagination states
+  const [regPage, setRegPage] = useState(1);
   const [pitchPage, setPitchPage] = useState(1);
 
   // ── Load data from Firestore ────────────────────
@@ -223,7 +488,7 @@ export default function AdminDashboard() {
     try {
       const [regSnap, pitchSnap] = await Promise.all([
         getDocs(query(collection(db, 'registrations'), orderBy('createdAt', 'desc'), limit(500))),
-        getDocs(query(collection(db, 'pitch-decks'),   orderBy('submissionDate', 'desc'), limit(500))),
+        getDocs(query(collection(db, 'pitch-decks'), orderBy('submissionDate', 'desc'), limit(500))),
       ]);
 
       setRegistrations(regSnap.docs.map(d => ({ id: d.id, ...d.data() }) as Registration));
@@ -245,7 +510,7 @@ export default function AdminDashboard() {
     loadData();
   }, []);
 
-  useEffect(() => { setRegPage(1);   }, [searchTerm, filterCategory, filterPaymentStatus]);
+  useEffect(() => { setRegPage(1); }, [searchTerm, filterCategory, filterPaymentStatus]);
   useEffect(() => { setPitchPage(1); }, [searchTerm]);
 
   // ── Delete handlers ──────────────────────────────
@@ -268,12 +533,123 @@ export default function AdminDashboard() {
       }
       
       setDeleteModal(null);
+      setToast({ message: 'Deleted successfully', type: 'success' });
       console.log('✅ Deleted successfully');
     } catch (err) {
       console.error('❌ Error deleting:', err);
-      alert('Failed to delete. Please try again.');
+      setToast({ message: 'Failed to delete. Please try again.', type: 'error' });
     } finally {
       setDeleting(false);
+    }
+  };
+
+  // ── Email sending handlers ──────────────────────
+  const handleSendEmailClick = (registration: Registration) => {
+    setEmailModal({ isOpen: true, registration });
+  };
+
+  const handleSendEmailConfirm = async () => {
+    if (!emailModal.registration) return;
+
+    setSendingEmail(true);
+    try {
+      const response = await fetch('/api/send-confirmation-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: emailModal.registration.email,
+          fullName: emailModal.registration.fullName,
+          uniqueId: emailModal.registration.registrationId,
+          categoryName: emailModal.registration.categoryName,
+          categoryId: emailModal.registration.category,
+          price: emailModal.registration.price,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to send email');
+      }
+
+      setToast({ 
+        message: `Confirmation email sent successfully to ${emailModal.registration.email}`, 
+        type: 'success' 
+      });
+      
+      setEmailModal({ isOpen: false, registration: null });
+      await loadData();
+      
+      console.log('✅ Confirmation email sent successfully');
+    } catch (err) {
+      console.error('❌ Error sending email:', err);
+      setToast({ 
+        message: err instanceof Error ? err.message : 'Failed to send confirmation email', 
+        type: 'error' 
+      });
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
+  // ── Payment confirmation handlers ────────────────
+  const handleConfirmPaymentClick = (registration: Registration) => {
+    setPaymentModal({ isOpen: true, registration });
+  };
+
+  const handleConfirmPaymentSubmit = async () => {
+    if (!paymentModal.registration) return;
+
+    setConfirmingPayment(true);
+    try {
+      const response = await fetch('/api/admin-payment-confirmation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          registrationId: paymentModal.registration.registrationId,
+          fullName: paymentModal.registration.fullName,
+          email: paymentModal.registration.email,
+          categoryName: paymentModal.registration.categoryName,
+          categoryId: paymentModal.registration.category,
+          price: paymentModal.registration.price,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to confirm payment');
+      }
+
+      // Check if email was sent
+      if (result.warning) {
+        setToast({ 
+          message: result.warning, 
+          type: 'warning' 
+        });
+      } else {
+        setToast({ 
+          message: `Payment confirmed and email sent to ${paymentModal.registration.email}`, 
+          type: 'success' 
+        });
+      }
+      
+      setPaymentModal({ isOpen: false, registration: null });
+      await loadData();
+      
+      console.log('✅ Payment manually confirmed successfully');
+    } catch (err) {
+      console.error('❌ Error confirming payment:', err);
+      setToast({ 
+        message: err instanceof Error ? err.message : 'Failed to confirm payment', 
+        type: 'error' 
+      });
+    } finally {
+      setConfirmingPayment(false);
     }
   };
 
@@ -281,9 +657,9 @@ export default function AdminDashboard() {
   const filteredRegistrations = useMemo(() =>
     registrations.filter(reg => {
       const haystack = `${reg.fullName} ${reg.email} ${reg.registrationId}`.toLowerCase();
-      const matchesSearch   = haystack.includes(searchTerm.toLowerCase());
+      const matchesSearch = haystack.includes(searchTerm.toLowerCase());
       const matchesCategory = filterCategory === 'all' || reg.categoryName.includes(filterCategory);
-      const matchesPayment  = filterPaymentStatus === 'all' || reg.paymentStatus === filterPaymentStatus;
+      const matchesPayment = filterPaymentStatus === 'all' || reg.paymentStatus === filterPaymentStatus;
       return matchesSearch && matchesCategory && matchesPayment;
     }),
     [registrations, searchTerm, filterCategory, filterPaymentStatus]
@@ -309,26 +685,28 @@ export default function AdminDashboard() {
 
   // ── Stats ────────────────────────────────────────
   const regStats = useMemo(() => ({
-    total:           registrations.length,
-    completed:       registrations.filter(r => r.paymentStatus === 'completed').length,
-    pending:         registrations.filter(r => r.paymentStatus === 'pending').length,
-    fullyFunded:     registrations.filter(r => r.categoryName.includes('Fully Funded')).length,
+    total: registrations.length,
+    completed: registrations.filter(r => r.paymentStatus === 'completed').length,
+    pending: registrations.filter(r => r.paymentStatus === 'pending').length,
+    fullyFunded: registrations.filter(r => r.categoryName.includes('Fully Funded')).length,
     partiallyFunded: registrations.filter(r => r.categoryName.includes('Partially Funded')).length,
-    basic:           registrations.filter(r => r.categoryName.includes('Basic')).length,
-    selfFunded:      registrations.filter(r => r.categoryName.includes('Self-Funded')).length,
+    basic: registrations.filter(r => r.categoryName.includes('Basic')).length,
+    selfFunded: registrations.filter(r => r.categoryName.includes('Self-Funded')).length,
+    emailsSent: registrations.filter(r => r.emailSent).length,
+    manuallyConfirmed: registrations.filter(r => r.manualConfirmation).length,
   }), [registrations]);
 
   const pitchStats = useMemo(() => ({
-    total:       pitchDecks.length,
-    submitted:   pitchDecks.filter(p => p.status === 'submitted').length,
+    total: pitchDecks.length,
+    submitted: pitchDecks.filter(p => p.status === 'submitted').length,
     underReview: pitchDecks.filter(p => p.status === 'under_review').length,
     shortlisted: pitchDecks.filter(p => p.status === 'shortlisted').length,
-    approved:    pitchDecks.filter(p => p.status === 'approved').length,
+    approved: pitchDecks.filter(p => p.status === 'approved').length,
   }), [pitchDecks]);
 
   // ── CSV exporters ────────────────────────────────
   const exportRegistrationsToCSV = () => {
-    const headers = ['Registration ID','Name','Email','Phone','Area of Interest','Category','Price','Payment Status','Date'];
+    const headers = ['Registration ID', 'Name', 'Email', 'Phone', 'Area of Interest', 'Category', 'Price', 'Payment Status', 'Payment Method', 'Email Sent', 'Manual Confirmation', 'Date'];
     const rows = filteredRegistrations.map(r => [
       r.registrationId,
       r.fullName,
@@ -338,6 +716,9 @@ export default function AdminDashboard() {
       r.categoryName,
       r.price,
       r.paymentStatus,
+      r.paymentMethod || 'N/A',
+      r.emailSent ? 'Yes' : 'No',
+      r.manualConfirmation ? 'Yes' : 'No',
       r.createdAt?.toDate().toLocaleDateString() || 'N/A',
     ]);
     downloadCSV(
@@ -347,7 +728,7 @@ export default function AdminDashboard() {
   };
 
   const exportPitchDecksToCSV = () => {
-    const headers = ['Registration ID','Name','Email','Business Name','Funding Needs','Team Size','Status','Pitch Deck URL','Submission Date'];
+    const headers = ['Registration ID', 'Name', 'Email', 'Business Name', 'Funding Needs', 'Team Size', 'Status', 'Pitch Deck URL', 'Submission Date'];
     const rows = filteredPitchDecks.map(p => [
       p.registrationId,
       p.fullName,
@@ -402,10 +783,32 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-7xl mx-auto">
 
+        {/* Toast Notifications */}
+        {toast && (
+          <Toast 
+            message={toast.message} 
+            type={toast.type} 
+            onClose={() => setToast(null)} 
+          />
+        )}
+
         {/* Header */}
         <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Admin Dashboard</h1>
-          <p className="text-gray-600">FuturenTrepeneurship NYSC 2026</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Admin Dashboard</h1>
+              <p className="text-gray-600">FuturenTrepeneurship NYSC 2026</p>
+            </div>
+            <button
+              onClick={loadData}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold transition flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Refresh
+            </button>
+          </div>
         </div>
 
         {/* Tabs */}
@@ -437,10 +840,22 @@ export default function AdminDashboard() {
                 <div className="text-4xl font-bold mb-1">{regStats.total}</div>
                 <div className="text-emerald-100">Total Registrations</div>
               </div>
-              <div className="bg-white rounded-xl p-6 shadow"><div className="text-3xl font-bold text-emerald-600 mb-1">{regStats.completed}</div><div className="text-sm text-gray-600">Paid</div></div>
-              <div className="bg-white rounded-xl p-6 shadow"><div className="text-3xl font-bold text-amber-600  mb-1">{regStats.pending}</div><div className="text-sm text-gray-600">Pending Payment</div></div>
-              <div className="bg-white rounded-xl p-6 shadow"><div className="text-3xl font-bold text-blue-600   mb-1">{regStats.fullyFunded}</div><div className="text-sm text-gray-600">Fully Funded</div></div>
-              <div className="bg-white rounded-xl p-6 shadow"><div className="text-3xl font-bold text-purple-600 mb-1">{regStats.selfFunded}</div><div className="text-sm text-gray-600">Self-Funded</div></div>
+              <div className="bg-white rounded-xl p-6 shadow">
+                <div className="text-3xl font-bold text-emerald-600 mb-1">{regStats.completed}</div>
+                <div className="text-sm text-gray-600">Paid</div>
+              </div>
+              <div className="bg-white rounded-xl p-6 shadow">
+                <div className="text-3xl font-bold text-amber-600 mb-1">{regStats.pending}</div>
+                <div className="text-sm text-gray-600">Pending Payment</div>
+              </div>
+              <div className="bg-white rounded-xl p-6 shadow">
+                <div className="text-3xl font-bold text-purple-600 mb-1">{regStats.manuallyConfirmed}</div>
+                <div className="text-sm text-gray-600">Manually Confirmed</div>
+              </div>
+              <div className="bg-white rounded-xl p-6 shadow">
+                <div className="text-3xl font-bold text-indigo-600 mb-1">{regStats.emailsSent}</div>
+                <div className="text-sm text-gray-600">Emails Sent</div>
+              </div>
             </>
           ) : (
             <>
@@ -448,10 +863,22 @@ export default function AdminDashboard() {
                 <div className="text-4xl font-bold mb-1">{pitchStats.total}</div>
                 <div className="text-blue-100">Total Pitch Decks</div>
               </div>
-              <div className="bg-white rounded-xl p-6 shadow"><div className="text-3xl font-bold text-gray-600   mb-1">{pitchStats.submitted}</div><div className="text-sm text-gray-600">Submitted</div></div>
-              <div className="bg-white rounded-xl p-6 shadow"><div className="text-3xl font-bold text-amber-600  mb-1">{pitchStats.underReview}</div><div className="text-sm text-gray-600">Under Review</div></div>
-              <div className="bg-white rounded-xl p-6 shadow"><div className="text-3xl font-bold text-blue-600   mb-1">{pitchStats.shortlisted}</div><div className="text-sm text-gray-600">Shortlisted</div></div>
-              <div className="bg-white rounded-xl p-6 shadow"><div className="text-3xl font-bold text-emerald-600 mb-1">{pitchStats.approved}</div><div className="text-sm text-gray-600">Approved</div></div>
+              <div className="bg-white rounded-xl p-6 shadow">
+                <div className="text-3xl font-bold text-gray-600 mb-1">{pitchStats.submitted}</div>
+                <div className="text-sm text-gray-600">Submitted</div>
+              </div>
+              <div className="bg-white rounded-xl p-6 shadow">
+                <div className="text-3xl font-bold text-amber-600 mb-1">{pitchStats.underReview}</div>
+                <div className="text-sm text-gray-600">Under Review</div>
+              </div>
+              <div className="bg-white rounded-xl p-6 shadow">
+                <div className="text-3xl font-bold text-blue-600 mb-1">{pitchStats.shortlisted}</div>
+                <div className="text-sm text-gray-600">Shortlisted</div>
+              </div>
+              <div className="bg-white rounded-xl p-6 shadow">
+                <div className="text-3xl font-bold text-emerald-600 mb-1">{pitchStats.approved}</div>
+                <div className="text-sm text-gray-600">Approved</div>
+              </div>
             </>
           )}
         </div>
@@ -519,7 +946,7 @@ export default function AdminDashboard() {
                 <table className="w-full">
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
-                      {['ID','Name','Email','Phone','Area','Category','Price','Payment','Date','Actions'].map(h => (
+                      {['ID', 'Name', 'Email', 'Phone', 'Area', 'Category', 'Price', 'Payment', 'Confirmation', 'Date', 'Actions'].map(h => (
                         <th key={h} className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">{h}</th>
                       ))}
                     </tr>
@@ -529,6 +956,11 @@ export default function AdminDashboard() {
                       <tr key={reg.id} className="hover:bg-gray-50 transition">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="font-mono text-sm font-semibold text-emerald-600">{reg.registrationId}</div>
+                          {reg.manualConfirmation && (
+                            <span className="inline-flex items-center gap-1 text-xs text-purple-600 mt-1">
+                              <Users className="w-3 h-3" /> Manual
+                            </span>
+                          )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{reg.fullName}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{reg.email}</td>
@@ -545,17 +977,53 @@ export default function AdminDashboard() {
                             {reg.paymentStatus}
                           </span>
                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {reg.emailSent ? (
+                            <span className="inline-flex items-center gap-1 text-emerald-600 text-sm">
+                              <CheckCircle className="w-4 h-4" /> Sent
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-gray-400 text-sm">
+                              <XCircle className="w-4 h-4" /> Not Sent
+                            </span>
+                          )}
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                           {reg.createdAt?.toDate().toLocaleDateString() || 'N/A'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <button
-                            onClick={() => handleDeleteClick('registration', reg.id, reg.fullName)}
-                            className="inline-flex items-center gap-1 text-red-600 hover:text-red-700 font-semibold text-sm transition"
-                            disabled={deleting}
-                          >
-                            <Trash2 className="w-4 h-4" /> Delete
-                          </button>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {reg.paymentStatus === 'pending' && (
+                              <button
+                                onClick={() => handleConfirmPaymentClick(reg)}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:shadow-md font-semibold text-xs transition-all cursor-pointer border border-emerald-200"
+                                title="Manually confirm payment"
+                              >
+                                <CheckCircle className="w-3.5 h-3.5" /> 
+                                Confirm Payment
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleSendEmailClick(reg)}
+                              disabled={reg.paymentStatus !== 'completed'}
+                              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold text-xs transition-all ${
+                                reg.paymentStatus === 'completed'
+                                  ? 'bg-blue-50 text-blue-700 hover:bg-blue-100 hover:shadow-md cursor-pointer border border-blue-200'
+                                  : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
+                              }`}
+                              title={reg.paymentStatus !== 'completed' ? 'Payment must be completed first' : 'Send confirmation email'}
+                            >
+                              <Mail className="w-3.5 h-3.5" /> 
+                              {reg.emailSent ? 'Resend' : 'Send'}
+                            </button>
+                            <button
+                              onClick={() => handleDeleteClick('registration', reg.id, reg.fullName)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 hover:shadow-md font-semibold text-xs transition-all cursor-pointer border border-red-200"
+                              disabled={deleting}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" /> Delete
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -584,7 +1052,7 @@ export default function AdminDashboard() {
                 <table className="w-full">
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
-                      {['Reg ID','Name','Business','Funding','Team','Status','Date','Actions'].map(h => (
+                      {['Reg ID', 'Name', 'Business', 'Funding', 'Team', 'Status', 'Date', 'Actions'].map(h => (
                         <th key={h} className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">{h}</th>
                       ))}
                     </tr>
@@ -614,28 +1082,28 @@ export default function AdminDashboard() {
                           {pitch.submissionDate?.toDate().toLocaleDateString() || 'N/A'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <a
                               href={pitch.pitchDeckUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-emerald-600 hover:text-emerald-700 font-semibold text-sm"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:shadow-md font-semibold text-xs transition-all cursor-pointer border border-emerald-200"
                             >
-                              <Eye className="w-4 h-4" /> View
+                              <Eye className="w-3.5 h-3.5" /> View
                             </a>
                             <a
                               href={pitch.pitchDeckUrl}
                               download={pitch.pitchDeckFileName || 'pitch-deck'}
-                              className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 font-semibold text-sm"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 hover:shadow-md font-semibold text-xs transition-all cursor-pointer border border-blue-200"
                             >
-                              <Download className="w-4 h-4" /> Download
+                              <Download className="w-3.5 h-3.5" /> Download
                             </a>
                             <button
                               onClick={() => handleDeleteClick('pitch', pitch.id, pitch.businessName)}
-                              className="inline-flex items-center gap-1 text-red-600 hover:text-red-700 font-semibold text-sm transition"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 hover:shadow-md font-semibold text-xs transition-all cursor-pointer border border-red-200"
                               disabled={deleting}
                             >
-                              <Trash2 className="w-4 h-4" /> Delete
+                              <Trash2 className="w-3.5 h-3.5" /> Delete
                             </button>
                           </div>
                         </td>
@@ -670,12 +1138,49 @@ export default function AdminDashboard() {
         />
       )}
 
+      {/* Email Confirmation Modal */}
+      {emailModal.isOpen && (
+        <EmailConfirmModal
+          isOpen={emailModal.isOpen}
+          onClose={() => setEmailModal({ isOpen: false, registration: null })}
+          onConfirm={handleSendEmailConfirm}
+          registration={emailModal.registration}
+          sending={sendingEmail}
+        />
+      )}
+
+      {/* Payment Confirmation Modal */}
+      {paymentModal.isOpen && (
+        <PaymentConfirmModal
+          isOpen={paymentModal.isOpen}
+          onClose={() => setPaymentModal({ isOpen: false, registration: null })}
+          onConfirm={handleConfirmPaymentSubmit}
+          registration={paymentModal.registration}
+          confirming={confirmingPayment}
+        />
+      )}
+
       <style jsx global>{`
         @keyframes scale-up {
           from { transform: scale(0.9); opacity: 0; }
           to { transform: scale(1); opacity: 1; }
         }
+        @keyframes slide-in {
+          from { transform: translateX(100%); opacity: 0; }
+          to { transform: translateX(0); opacity: 1; }
+        }
         .animate-scale-up { animation: scale-up 0.2s ease-out; }
+        .animate-slide-in { animation: slide-in 0.3s ease-out; }
+        
+        button:not(:disabled) {
+          cursor: pointer !important;
+        }
+        button:disabled {
+          cursor: not-allowed !important;
+        }
+        button:not(:disabled):active {
+          transform: scale(0.95);
+        }
       `}</style>
     </div>
   );

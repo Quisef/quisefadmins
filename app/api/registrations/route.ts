@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Prepare registration data for Firebase
+    // ✅ FIXED: Complete registration data with email tracking fields
     const registrationData = {
       registrationId: data.registrationId,
       fullName: data.fullName,
@@ -69,6 +69,10 @@ export async function POST(request: NextRequest) {
       paymentMethod: null,
       paymentChannel: null,
       paidAt: null,
+      amountPaid: null,
+      // ✅ CRITICAL: Initialize email tracking fields
+      emailSent: false,
+      emailSentAt: null,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
@@ -145,6 +149,7 @@ export async function GET(request: NextRequest) {
       createdAt: data.createdAt?.toDate?.()?.toISOString() || null,
       updatedAt: data.updatedAt?.toDate?.()?.toISOString() || null,
       paidAt: data.paidAt?.toDate?.()?.toISOString() || null,
+      emailSentAt: data.emailSentAt?.toDate?.()?.toISOString() || null,
     };
 
     return NextResponse.json({

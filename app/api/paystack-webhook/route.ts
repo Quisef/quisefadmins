@@ -1,31 +1,33 @@
 // app/api/paystack-webhook/route.ts
-// This is an example webhook handler for Paystack payment verification
-
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { db } from '@/lib/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, getDoc } from 'firebase/firestore';
 
 export async function POST(request: NextRequest) {
   try {
-    // Get the raw body
-    const payload = await request.json();
+    // Get the request body as text for signature verification
+    const text = await request.text();
+    const payload = JSON.parse(text);
     
     // Verify the webhook signature
     const hash = crypto
       .createHmac('sha512', process.env.PAYSTACK_SECRET_KEY!)
-      .update(JSON.stringify(payload))
+      .update(text)
       .digest('hex');
     
     const paystackSignature = request.headers.get('x-paystack-signature');
     
     if (hash !== paystackSignature) {
-      console.error('Invalid webhook signature');
+      console.error('❌ [WEBHOOK] Invalid signature');
       return NextResponse.json(
         { error: 'Invalid signature' },
         { status: 400 }
       );
     }
+    
+    console.log('✅ [WEBHOOK] Signature verified');
+    console.log('📦 [WEBHOOK] Event type:', payload.event);
     
     // Handle different event types
     const event = payload.event;
@@ -40,15 +42,18 @@ export async function POST(request: NextRequest) {
         break;
         
       default:
-        console.log(`Unhandled event type: ${event}`);
+        console.log(`ℹ️ [WEBHOOK] Unhandled event type: ${event}`);
     }
     
     return NextResponse.json({ success: true });
     
   } catch (error) {
-    console.error('Webhook error:', error);
+    console.error('❌ [WEBHOOK] Error:', error);
     return NextResponse.json(
-      { error: 'Webhook processing failed' },
+      { 
+        error: 'Webhook processing failed',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }
@@ -56,78 +61,151 @@ export async function POST(request: NextRequest) {
 
 async function handleSuccessfulPayment(data: any) {
   try {
-    const metadata = data.metadata;
-    const applicationId = metadata?.applicationId;
+    console.log('💰 [WEBHOOK] Processing successful payment...');
     
-    if (!applicationId) {
-      console.error('No application ID in metadata');
+    // Get registration ID from reference
+    const registrationId = data.reference;
+    
+    if (!registrationId) {
+      console.error('❌ [WEBHOOK] No registration ID in payment data');
       return;
     }
     
-    // Update the application in Firebase
-    await updateDoc(doc(db, 'membershipApplications', applicationId), {
+    console.log('📝 [WEBHOOK] Registration ID:', registrationId);
+    
+    // Get the registration from Firebase
+    const docRef = doc(db, 'registrations', registrationId);
+    const docSnap = await getDoc(docRef);
+    
+    if (!docSnap.exists()) {
+      console.error('❌ [WEBHOOK] Registration not found:', registrationId);
+      return;
+    }
+    
+    const registrationData = docSnap.data();
+    console.log('📄 [WEBHOOK] Found registration for:', registrationData.fullName);
+    
+    // ✅ STEP 1: Update payment status first (most critical)
+    await updateDoc(docRef, {
       paymentStatus: 'completed',
-      paymentId: data.reference,
+      paymentReference: data.reference,
       paymentMethod: 'paystack',
       paymentChannel: data.channel,
       paidAt: new Date(data.paid_at),
       amountPaid: data.amount / 100, // Convert from kobo to naira
+      updatedAt: new Date(),
     });
     
-    console.log(`Payment successful for application: ${applicationId}`);
+    console.log('✅ [WEBHOOK] Payment status updated to completed');
     
-    // Optional: Send confirmation email here
-    // await sendConfirmationEmail(metadata.email, applicationId);
+    // ✅ STEP 2: Send confirmation email with error handling
+    // If email fails, payment is still successful and admin can send manually
+    try {
+      console.log('📧 [WEBHOOK] Sending confirmation email to:', registrationData.email);
+      
+      await sendConfirmationEmail({
+        email: registrationData.email,
+        fullName: registrationData.fullName,
+        uniqueId: registrationId,
+        categoryName: registrationData.categoryName,
+        categoryId: registrationData.category,
+        price: registrationData.price,
+      });
+      
+      // ✅ STEP 3: Update email sent status
+      await updateDoc(docRef, {
+        emailSent: true,
+        emailSentAt: new Date(),
+        updatedAt: new Date(),
+      });
+      
+      console.log('✅ [WEBHOOK] Confirmation email sent successfully');
+      console.log('✅ [WEBHOOK] Email status updated in Firestore');
+      
+    } catch (emailError) {
+      console.error('❌ [WEBHOOK] Error sending confirmation email:', emailError);
+      console.log('⚠️ [WEBHOOK] Payment succeeded but email failed. Admin can send manually.');
+      // DON'T throw - payment was successful, email is just a notification
+    }
+    
+    console.log(`✅ [WEBHOOK] Payment fully processed for: ${registrationId}`);
     
   } catch (error) {
-    console.error('Error handling successful payment:', error);
+    console.error('❌ [WEBHOOK] Error handling successful payment:', error);
     throw error;
   }
 }
 
 async function handleFailedPayment(data: any) {
   try {
-    const metadata = data.metadata;
-    const applicationId = metadata?.applicationId;
+    console.log('⚠️ [WEBHOOK] Processing failed payment...');
     
-    if (!applicationId) {
-      console.error('No application ID in metadata');
+    const registrationId = data.reference;
+    
+    if (!registrationId) {
+      console.error('❌ [WEBHOOK] No registration ID in failed payment');
       return;
     }
     
-    // Update the application in Firebase
-    await updateDoc(doc(db, 'membershipApplications', applicationId), {
+    // Update the registration in Firebase
+    const docRef = doc(db, 'registrations', registrationId);
+    const docSnap = await getDoc(docRef);
+    
+    if (!docSnap.exists()) {
+      console.error('❌ [WEBHOOK] Registration not found for failed payment:', registrationId);
+      return;
+    }
+    
+    await updateDoc(docRef, {
       paymentStatus: 'failed',
-      paymentId: data.reference,
+      paymentReference: data.reference,
       failureReason: data.gateway_response,
+      updatedAt: new Date(),
     });
     
-    console.log(`Payment failed for application: ${applicationId}`);
-    
-    // Optional: Send failure notification
-    // await sendPaymentFailureEmail(metadata.email);
+    console.log(`⚠️ [WEBHOOK] Payment failed for: ${registrationId}`);
+    console.log(`Reason: ${data.gateway_response}`);
     
   } catch (error) {
-    console.error('Error handling failed payment:', error);
+    console.error('❌ [WEBHOOK] Error handling failed payment:', error);
     throw error;
   }
 }
 
-// Optional: Email notification function
-async function sendConfirmationEmail(email: string, applicationId: string) {
-  // Implement your email sending logic here
-  // You can use SendGrid, Mailgun, or any other email service
-  
-  console.log(`Sending confirmation email to: ${email}`);
-  
-  // Example with nodemailer or your preferred service:
-  // await emailService.send({
-  //   to: email,
-  //   subject: 'Membership Application Confirmed',
-  //   html: `
-  //     <h1>Thank you for your membership!</h1>
-  //     <p>Your application ID: ${applicationId}</p>
-  //     <p>Your payment has been confirmed.</p>
-  //   `
-  // });
+/**
+ * Send confirmation email by calling our email API
+ * This keeps email logic centralized and allows for manual sending
+ */
+async function sendConfirmationEmail(params: {
+  email: string;
+  fullName: string;
+  uniqueId: string;
+  categoryName: string;
+  categoryId: string;
+  price: string;
+}) {
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://quietshelter.org';
+    
+    const response = await fetch(`${baseUrl}/api/send-confirmation-email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(params),
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      console.error('❌ [WEBHOOK] Email API error:', error);
+      throw new Error('Failed to send confirmation email');
+    }
+    
+    const result = await response.json();
+    console.log('✅ [WEBHOOK] Email API response:', result);
+    
+  } catch (error) {
+    console.error('❌ [WEBHOOK] Error calling email API:', error);
+    throw error; // Re-throw so caller can handle
+  }
 }
