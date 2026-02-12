@@ -1,5 +1,6 @@
 import { collection, addDoc, Timestamp } from 'firebase/firestore';
-import { db } from './firebase';
+import { db } from '@/lib/firebase';
+import axios from 'axios';
 
 // ────────────────────────────────────────────────
 // Pitch deck form data interface
@@ -20,35 +21,85 @@ export interface PitchDeckData {
 }
 
 // ────────────────────────────────────────────────
-// Upload file via the /api/upload-pitch-deck route
-// (keeps Cloudinary credentials server-side only)
+// Upload file to Cloudinary (unsigned upload - like blog)
 // ────────────────────────────────────────────────
-async function uploadViaSelfApi(
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+async function uploadToCloudinary(
   file: File,
   registrationId: string
 ): Promise<{ url: string; publicId: string }> {
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('registrationId', registrationId);
+  try {
+    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+    const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 
-  // Do NOT manually set Content-Type here.
-  // The browser must set it automatically so the multipart boundary is included.
-  const response = await fetch('/api/upload-pitch-deck', {
-    method: 'POST',
-    body: formData,
-  });
+    if (!cloudName || !uploadPreset) {
+      throw new Error('Cloudinary configuration is missing. Please check your environment variables.');
+    }
 
-  // Parse the JSON body regardless of status so we can read the error message
-  const data = await response.json();
+    // Validate file type
+    const allowedTypes = [
+      'application/pdf',
+      'application/vnd.ms-powerpoint',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    ];
 
-  if (!response.ok) {
-    throw new Error(data.error || 'Upload failed with an unknown error');
+    if (!allowedTypes.includes(file.type)) {
+      throw new Error('Invalid file type. Only PDF and PowerPoint files are allowed.');
+    }
+
+    // Validate file size (10MB)
+    if (file.size > MAX_FILE_SIZE) {
+      throw new Error('File size exceeds 10MB limit.');
+    }
+
+    // Create FormData for upload
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', uploadPreset);
+    formData.append('folder', 'futurentrepeneurship/pitch-decks');
+    
+    // Add registration ID and timestamp to public_id for better organization
+    const timestamp = Date.now();
+    const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+    formData.append('public_id', `${registrationId}_${timestamp}_${sanitizedFileName}`);
+    
+    // Add tags for easier management
+    formData.append('tags', `registration_${registrationId},pitch_deck,${new Date().getFullYear()}`);
+
+    // Use 'raw' endpoint for non-image files (PDF, PowerPoint)
+    const apiUrl = `https://api.cloudinary.com/v1_1/${cloudName}/raw/upload`;
+    
+    const response = await axios.post(apiUrl, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 60000, // 60 seconds for large files
+    });
+
+    if (!response.data.secure_url) {
+      throw new Error('Cloudinary upload failed - no secure URL returned');
+    }
+
+    console.log('✅ File uploaded to Cloudinary:', response.data.secure_url);
+
+    return {
+      url: response.data.secure_url,
+      publicId: response.data.public_id,
+    };
+  } catch (error) {
+    console.error('❌ Cloudinary Upload Error:', error);
+    
+    if (axios.isAxiosError(error)) {
+      throw new Error(
+        `Upload failed: ${error.response?.data?.error?.message || error.message}`
+      );
+    }
+    
+    throw new Error(
+      error instanceof Error 
+        ? error.message 
+        : 'Failed to upload pitch deck. Please try again.'
+    );
   }
-
-  return {
-    url: data.url,
-    publicId: data.publicId,
-  };
 }
 
 // ────────────────────────────────────────────────
@@ -59,46 +110,61 @@ export async function savePitchDeck(
   file: File
 ): Promise<void> {
   try {
-    // 1. Upload file via API route → Cloudinary (server-side)
-    const { url: downloadURL, publicId } = await uploadViaSelfApi(
-      file,
-      data.registrationId
-    );
+    console.log('📤 Starting pitch deck upload...');
+    
+    // 1. Upload file to Cloudinary (unsigned upload)
+    const { url: downloadURL, publicId } = await uploadToCloudinary(file, data.registrationId);
+    console.log('✅ File uploaded successfully to Cloudinary');
 
-    // 2. Save metadata to Firestore
-    await addDoc(collection(db, 'pitch-decks'), {
+    // 2. Save to Firestore
+    console.log('💾 Saving pitch deck metadata to Firestore...');
+    const docRef = await addDoc(collection(db, 'pitch-decks'), {
       ...data,
       pitchDeckUrl: downloadURL,
       pitchDeckFileName: file.name,
       cloudinaryPublicId: publicId,
+      fileSize: file.size,
+      fileType: file.type,
       submissionDate: Timestamp.now(),
       status: 'submitted',
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
     });
+    console.log('✅ Pitch deck saved to Firestore with ID:', docRef.id);
 
-    // 3. Send confirmation email
-    await sendPitchDeckNotification(
-      data.email,
-      data.fullName,
-      data.registrationId,
-      data.businessName
-    );
+    // 3. Send confirmation email (non-blocking - don't fail if email fails)
+    try {
+      console.log('📧 Sending confirmation email...');
+      await sendPitchDeckNotification(
+        data.email,
+        data.fullName,
+        data.registrationId,
+        data.businessName
+      );
+      console.log('✅ Confirmation email sent successfully');
+    } catch (emailError) {
+      // Log but don't fail the whole submission if email fails
+      console.warn('⚠️ Email notification failed, but pitch deck was saved:', emailError);
+    }
   } catch (error) {
-    // Log the real error so you can debug it in the console
-    console.error('Error saving pitch deck:', error);
-    // Re-throw so the calling component receives the actual message
-    throw error;
+    console.error('❌ Error saving pitch deck:', error);
+    throw new Error(
+      error instanceof Error 
+        ? error.message 
+        : 'Failed to save pitch deck. Please try again.'
+    );
   }
 }
 
 // ────────────────────────────────────────────────
 // Send pitch deck confirmation email via API
 // ────────────────────────────────────────────────
-export async function sendPitchDeckNotification(
+async function sendPitchDeckNotification(
   email: string,
   fullName: string,
   registrationId: string,
   businessName: string
-): Promise<boolean> {
+): Promise<void> {
   try {
     const response = await fetch('/api/send-pitch-deck-notification', {
       method: 'POST',
@@ -111,14 +177,29 @@ export async function sendPitchDeckNotification(
       }),
     });
 
+    // Handle non-OK responses
     if (!response.ok) {
-      console.error('Email API returned error:', await response.text());
-      return false;
+      let errorMessage = 'Email notification failed';
+      
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorMessage;
+      } catch (parseError) {
+        // If response is not JSON, use status text
+        errorMessage = `Email notification failed: ${response.status} ${response.statusText}`;
+      }
+      
+      throw new Error(errorMessage);
     }
 
-    return true;
+    // Parse successful response
+    const result = await response.json();
+    
+    if (!result.success) {
+      throw new Error(result.error || 'Email notification failed');
+    }
   } catch (error) {
-    console.error('Error sending pitch deck notification:', error);
-    return false;
+    console.error('❌ Error sending pitch deck notification:', error);
+    throw error; // Re-throw so it can be caught by savePitchDeck
   }
 }
