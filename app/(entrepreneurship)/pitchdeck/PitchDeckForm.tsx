@@ -7,7 +7,25 @@ import {
   Lightbulb, TrendingUp, Users, Target, DollarSign,
   AlertCircle
 } from 'lucide-react';
-import { savePitchDeck } from '@/lib/pitchDeckService';
+
+// Inline client-side submission helper to avoid importing a non-module server file
+async function savePitchDeck(data: any, file: File) {
+  const form = new FormData();
+  Object.entries(data).forEach(([k, v]) => form.append(k, String(v ?? '')));
+  form.append('pitchDeck', file);
+
+  const res = await fetch('/api/pitchdeck', {
+    method: 'POST',
+    body: form,
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(body || 'Submission failed');
+  }
+
+  return res.json();
+}
 
 export default function PitchDeckForm() {
   const searchParams = useSearchParams();
@@ -34,7 +52,9 @@ export default function PitchDeckForm() {
   const [submitError,   setSubmitError]   = useState('');
   const [filePreview,   setFilePreview]   = useState('');
 
-  // ── Auto-populate from URL params ──────────────────────────────
+  const [notEligible, setNotEligible] = useState(false);
+
+  // ── Auto-populate from URL params & check eligibility ───────────
   useEffect(() => {
     const id       = searchParams.get('id');
     const name     = searchParams.get('name');
@@ -42,12 +62,18 @@ export default function PitchDeckForm() {
     const category = searchParams.get('category');
 
     if (id && name && email && category) {
+      const cat = decodeURIComponent(category);
+      const catId = cat.toLowerCase().includes('fully funded') ? 'fully-funded' 
+        : cat.toLowerCase().includes('partially funded') ? 'partially-funded'
+        : cat.toLowerCase().includes('basic') ? 'basic'
+        : cat.toLowerCase().includes('self-funded') ? 'self-funded' : '';
+      setNotEligible(!['fully-funded', 'partially-funded'].includes(catId));
       setFormData(prev => ({
         ...prev,
         registrationId: decodeURIComponent(id),
         fullName:       decodeURIComponent(name),
         email:          decodeURIComponent(email),
-        category:       decodeURIComponent(category),
+        category:       cat,
       }));
     }
   }, [searchParams]);
@@ -168,6 +194,30 @@ export default function PitchDeckForm() {
             className="inline-block w-full sm:w-auto bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-8 sm:px-12 py-3 sm:py-4 rounded-xl font-bold hover:from-emerald-700 hover:to-teal-700 transition shadow-xl hover:shadow-2xl text-base sm:text-lg"
           >
             Return to Home
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Not eligible (basic/self-funded) ─────────────────────────────
+  if (notEligible && formData.registrationId) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-orange-50/60 flex items-center justify-center p-4 sm:p-6">
+        <div className="max-w-2xl w-full bg-white rounded-2xl sm:rounded-3xl shadow-2xl p-6 sm:p-8 md:p-10 text-center border border-amber-100">
+          <div className="w-20 h-20 sm:w-24 sm:h-24 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <AlertCircle className="w-12 h-12 sm:w-14 sm:h-14 text-amber-600" />
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3">Pitch Deck Not Required</h2>
+          <p className="text-base sm:text-lg text-gray-600 mb-6">
+            Your registration category ({formData.category}) does not require a pitch deck submission. 
+            You will receive a confirmation email with your program details.
+          </p>
+          <p className="text-sm text-gray-500 mb-6">
+            Only Fully Funded and Partially Funded registrations participate in the pitch deck competition for funding opportunities.
+          </p>
+          <a href="/futurentrepreneurship26" className="inline-block bg-emerald-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-emerald-700 transition">
+            Return to Program
           </a>
         </div>
       </div>

@@ -176,6 +176,13 @@ async function handleFailedPayment(data: any) {
  * Send confirmation email by calling our email API
  * This keeps email logic centralized and allows for manual sending
  */
+function getAppBaseUrl(): string {
+  // Prefer explicit config, then Vercel, then production fallback
+  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '');
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return 'https://quietshelter.org';
+}
+
 async function sendConfirmationEmail(params: {
   email: string;
   fullName: string;
@@ -185,9 +192,11 @@ async function sendConfirmationEmail(params: {
   price: string;
 }) {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://quietshelter.org';
+    const baseUrl = getAppBaseUrl();
+    const url = `${baseUrl}/api/send-confirmation-email`;
+    console.log('📧 [WEBHOOK] Calling email API:', url);
     
-    const response = await fetch(`${baseUrl}/api/send-confirmation-email`, {
+    const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

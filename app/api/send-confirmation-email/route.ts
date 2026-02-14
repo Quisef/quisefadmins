@@ -19,8 +19,9 @@ export async function POST(request: NextRequest) {
     console.log('📧 [EMAIL] Sending confirmation email to:', email);
     console.log('📋 [EMAIL] Registration ID:', uniqueId);
 
-    // Determine if pitch deck link should be included based on category
-    const includePitchDeck = categoryId !== 'self-funded';
+    // Only fully-funded and partially-funded get pitch deck link; basic & self-funded get confirmation only
+    const pitchDeckEligibleCategories = ['fully-funded', 'partially-funded'];
+    const includePitchDeck = categoryId && pitchDeckEligibleCategories.includes(String(categoryId));
 
     // Create nodemailer transporter
     const transporter = nodemailer.createTransport({

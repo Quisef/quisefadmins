@@ -107,15 +107,25 @@ async function handleSuccessfulPayment(data: any) {
     
     console.log('✅ Payment status updated in database');
     
-    // Send confirmation email with pitch deck link
-    await sendConfirmationEmail({
-      email: registrationData.email,
-      fullName: registrationData.fullName,
-      uniqueId: registrationId,
-      categoryName: registrationData.categoryName,
-      categoryId: registrationData.category, // Use category from database
-      price: registrationData.price,
-    });
+    // Send confirmation email
+    try {
+      await sendConfirmationEmail({
+        email: registrationData.email,
+        fullName: registrationData.fullName,
+        uniqueId: registrationId,
+        categoryName: registrationData.categoryName,
+        categoryId: registrationData.category,
+        price: registrationData.price,
+      });
+      await updateDoc(docRef, {
+        emailSent: true,
+        emailSentAt: new Date(),
+        updatedAt: new Date(),
+      });
+      console.log('✅ [WEBHOOK] Confirmation email sent to:', registrationData.email);
+    } catch (emailError) {
+      console.error('❌ [WEBHOOK] Email failed:', emailError);
+    }
     
     console.log(`✅ Payment processed successfully for: ${registrationId}`);
     
@@ -164,6 +174,12 @@ async function handleFailedPayment(data: any) {
 /**
  * Send confirmation email by calling our email API
  */
+function getAppBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '');
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return 'https://quietshelter.org';
+}
+
 async function sendConfirmationEmail(params: {
   email: string;
   fullName: string;
@@ -174,14 +190,11 @@ async function sendConfirmationEmail(params: {
 }) {
   try {
     console.log('📧 Sending confirmation email to:', params.email);
-    console.log('📋 Email params:', {
-      categoryId: params.categoryId,
-      showPitchDeck: params.categoryId !== 'self-funded'
-    });
+    const baseUrl = getAppBaseUrl();
+    const url = `${baseUrl}/api/send-confirmation-email`;
+    console.log('📧 [WEBHOOK] Calling email API:', url);
     
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http:quietshelter.org';
-    
-    const response = await fetch(`${baseUrl}/api/send-confirmation-email`, {
+    const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

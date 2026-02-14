@@ -11,7 +11,8 @@ function PaymentSuccessContent() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    const reference = searchParams.get('reference');
+    // Paystack may pass reference as 'reference' or 'trxref'
+    const reference = searchParams.get('reference') || searchParams.get('trxref');
     const categoryId = searchParams.get('category');
 
     if (!reference) {
@@ -21,7 +22,7 @@ function PaymentSuccessContent() {
     }
 
     // Fetch registration data
-    fetch(`/api/registrations?id=${reference}`)
+    fetch(`/api/registrations?id=${encodeURIComponent(reference)}`)
       .then(res => res.json())
       .then(data => {
         if (data.success) {
@@ -81,8 +82,10 @@ function PaymentSuccessContent() {
     );
   }
 
-  const reference = searchParams.get('reference');
-  const showPitchDeck = registrationData?.categoryId !== 'self-funded';
+  const reference = searchParams.get('reference') || searchParams.get('trxref');
+  // Only fully-funded and partially-funded get pitch deck; basic & self-funded get confirmation email only
+  const pitchDeckEligibleCategories = ['fully-funded', 'partially-funded'];
+  const showPitchDeck = registrationData?.categoryId && pitchDeckEligibleCategories.includes(String(registrationData.categoryId));
 
   const pitchDeckUrl = showPitchDeck ? 
     `/pitchdeck?id=${encodeURIComponent(reference || '')}` +
@@ -199,10 +202,10 @@ function PaymentSuccessContent() {
           <div className="mb-6 xs:mb-8">
             <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-l-4 border-amber-500 rounded-r-xl p-5 xs:p-6">
               <h3 className="font-bold text-gray-900 mb-3 text-base xs:text-lg sm:text-xl">
-                ✅ Self-Funded Track Activated
+                ✅ Registration Confirmed
               </h3>
               <p className="text-xs xs:text-sm sm:text-base text-gray-700 leading-relaxed mb-3">
-                <strong>You have full access to all program benefits:</strong>
+                <strong>You have full access to your program benefits. A confirmation email has been sent.</strong>
               </p>
               <ul className="space-y-2 text-xs xs:text-sm sm:text-base text-gray-700">
                 <li className="flex items-start gap-2">
@@ -211,19 +214,15 @@ function PaymentSuccessContent() {
                 </li>
                 <li className="flex items-start gap-2">
                   <Check className="w-4 h-4 xs:w-5 xs:h-5 text-emerald-600 mt-0.5 flex-shrink-0" />
-                  <span>Dedicated one-on-one mentorship</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="w-4 h-4 xs:w-5 xs:h-5 text-emerald-600 mt-0.5 flex-shrink-0" />
-                  <span>Business plan competition eligibility</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="w-4 h-4 xs:w-5 xs:h-5 text-emerald-600 mt-0.5 flex-shrink-0" />
                   <span>Lifetime alumni network access</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="w-4 h-4 xs:w-5 xs:h-5 text-emerald-600 mt-0.5 flex-shrink-0" />
+                  <span>Program updates via email</span>
                 </li>
               </ul>
               <p className="text-xs xs:text-sm sm:text-base text-amber-900 font-semibold mt-4 bg-amber-100 p-3 rounded-lg">
-                🎯 Your dedicated mentor will contact you after March 9, 2026
+                🎯 Check your email for next steps. Contact support@quietshelter.org if you need help.
               </p>
             </div>
           </div>
