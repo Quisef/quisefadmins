@@ -1,7 +1,9 @@
-// app/api/admin/confirm-payment/route.ts
+// app/api/admin-payment-confirmation/route.ts
+// Fallback for manual payments (bank transfer, cash, etc.) - admin confirms and triggers email
 import { NextRequest, NextResponse } from 'next/server';
 import { doc, updateDoc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { sendConfirmationEmail } from '@/lib/sendConfirmationEmail';
 
 /**
  * Admin Manual Payment Confirmation API
@@ -67,74 +69,32 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ [ADMIN] Payment status updated to completed');
 
-    // ✅ STEP 3: Send confirmation email
+    // ✅ STEP 3: Send confirmation email (fallback for manual payments)
     try {
-      console.log('📧 [ADMIN] Sending confirmation email...');
-      
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://quietshelter.org';
-      
-      const emailResponse = await fetch(`${baseUrl}/api/send-confirmation-email`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: email,
-          fullName: fullName,
-          uniqueId: registrationId,
-          categoryName: categoryName || existingData.categoryName,
-          categoryId: categoryId || existingData.category,
-          price: price || existingData.price,
-        }),
+      await sendConfirmationEmail({
+        email,
+        fullName,
+        uniqueId: registrationId,
+        categoryName: categoryName || existingData.categoryName,
+        categoryId: categoryId || existingData.category,
+        price: price || existingData.price,
       });
-
-      if (!emailResponse.ok) {
-        const emailError = await emailResponse.json();
-        console.error('❌ [ADMIN] Email sending failed:', emailError);
-        
-        // Payment is confirmed but email failed
-        // Update Firestore to reflect this
-        await updateDoc(docRef, {
-          emailSent: false,
-          emailError: emailError.error || 'Failed to send email',
-          updatedAt: new Date(),
-        });
-
-        return NextResponse.json({
-          success: true,
-          warning: 'Payment confirmed but email failed. Please send email manually.',
-          message: 'Payment status updated to completed, but confirmation email could not be sent.',
-          paymentConfirmed: true,
-          emailSent: false,
-        });
-      }
-
-      const emailResult = await emailResponse.json();
-      console.log('✅ [ADMIN] Confirmation email sent successfully');
-
-      // Note: The email API will update emailSent and emailSentAt in Firestore
-
       return NextResponse.json({
         success: true,
         message: 'Payment confirmed and confirmation email sent successfully',
         paymentConfirmed: true,
         emailSent: true,
       });
-
     } catch (emailError) {
-      console.error('❌ [ADMIN] Error sending confirmation email:', emailError);
-      
-      // Payment is confirmed but email failed
+      console.error('❌ [ADMIN] Email failed:', emailError);
       await updateDoc(docRef, {
         emailSent: false,
-        emailError: emailError instanceof Error ? emailError.message : 'Email sending failed',
+        emailError: emailError instanceof Error ? emailError.message : 'Failed',
         updatedAt: new Date(),
       });
-
       return NextResponse.json({
         success: true,
-        warning: 'Payment confirmed but email failed',
-        message: 'Payment status updated, but confirmation email could not be sent. You can resend it manually.',
+        warning: 'Payment confirmed but email failed. Use "Send Email" to resend.',
         paymentConfirmed: true,
         emailSent: false,
       });

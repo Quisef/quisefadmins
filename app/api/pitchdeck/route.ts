@@ -1,23 +1,34 @@
 // app/api/pitchdeck/route.ts
 // Handles full pitch deck submission: form data + file upload to Cloudinary + Firestore save
 import { NextRequest, NextResponse } from 'next/server';
-import cloudinary from '@/lib/cloudinary';
-import { db } from '@/lib/firebase';
-import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { customAlphabet } from 'nanoid';
 
 const nanoid = customAlphabet('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', 12);
 
-const ALLOWED_TYPES = [
+const ALLOWED_MIME_TYPES = [
   'application/pdf',
   'application/vnd.ms-powerpoint',
   'application/vnd.openxmlformats-officedocument.presentationml.presentation',
 ];
 
+const ALLOWED_EXTENSIONS = ['.pdf', '.ppt', '.pptx'];
+
+function isFileTypeAllowed(file: File): boolean {
+  const ext = '.' + (file.name.split('.').pop() || '').toLowerCase();
+  if (ALLOWED_EXTENSIONS.includes(ext)) return true;
+  if (ALLOWED_MIME_TYPES.includes(file.type)) return true;
+  return false;
+}
+
 async function uploadToCloudinary(
   file: File,
   registrationId: string
 ): Promise<{ url: string; publicId: string }> {
+  const cloudinary = (await import('@/lib/cloudinary')).default;
+  if (!process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+    throw new Error('Cloudinary is not configured. Add NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET to .env');
+  }
+
   const bytes = await file.arrayBuffer();
   const buffer = Buffer.from(bytes);
 
@@ -56,7 +67,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!ALLOWED_TYPES.includes(file.type)) {
+    if (!isFileTypeAllowed(file)) {
       return NextResponse.json(
         { error: 'Invalid file type. Only PDF and PowerPoint (.ppt, .pptx) are allowed.' },
         { status: 400 }
@@ -82,32 +93,42 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify registration exists and is eligible for pitch deck (fully-funded or partially-funded only)
-    const PITCH_DECK_ELIGIBLE = ['fully-funded', 'partially-funded'];
-    const regRef = doc(db, 'registrations', registrationId);
-    const regSnap = await getDoc(regRef);
-    if (!regSnap.exists()) {
-      return NextResponse.json(
-        { error: 'Registration not found. Please complete payment first.' },
-        { status: 404 }
-      );
-    }
-    const regData = regSnap.data();
-    if (regData.paymentStatus !== 'completed') {
-      return NextResponse.json(
-        { error: 'Payment must be completed before submitting a pitch deck.' },
-        { status: 403 }
-      );
-    }
-    if (!PITCH_DECK_ELIGIBLE.includes(String(regData.category || ''))) {
-      return NextResponse.json(
-        { error: 'Pitch deck submission is only available for Fully Funded and Partially Funded registrations.' },
-        { status: 403 }
-      );
+    // Verify registration and eligibility (bypass in test mode for local testing)
+    const testMode = process.env.PITCH_DECK_TEST_MODE === 'true' || process.env.NODE_ENV === 'development';
+
+    if (!testMode) {
+      const { db } = await import('@/lib/firebase');
+      const { doc, getDoc } = await import('firebase/firestore');
+
+      const PITCH_DECK_ELIGIBLE = ['fully-funded', 'partially-funded'];
+      const regRef = doc(db, 'registrations', registrationId);
+      const regSnap = await getDoc(regRef);
+      if (!regSnap.exists()) {
+        return NextResponse.json(
+          { error: 'Registration not found. Please complete payment first.' },
+          { status: 404 }
+        );
+      }
+      const regData = regSnap.data();
+      if (regData.paymentStatus !== 'completed') {
+        return NextResponse.json(
+          { error: 'Payment must be completed before submitting a pitch deck.' },
+          { status: 403 }
+        );
+      }
+      if (!PITCH_DECK_ELIGIBLE.includes(String(regData.category || ''))) {
+        return NextResponse.json(
+          { error: 'Pitch deck submission is only available for Fully Funded and Partially Funded registrations.' },
+          { status: 403 }
+        );
+      }
     }
 
     // Upload to Cloudinary
     const { url: pitchDeckUrl, publicId: cloudinaryPublicId } = await uploadToCloudinary(file, registrationId);
+
+    const { db } = await import('@/lib/firebase');
+    const { doc, setDoc, serverTimestamp } = await import('firebase/firestore');
 
     const docId = `PD-${nanoid()}`;
     const pitchDeckData = {
@@ -135,7 +156,6 @@ export async function POST(request: NextRequest) {
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
-
     await setDoc(doc(db, 'pitch-decks', docId), pitchDeckData);
 
     console.log('✅ Pitch deck submitted:', docId, registrationId);

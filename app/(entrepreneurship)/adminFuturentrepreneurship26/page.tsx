@@ -315,6 +315,32 @@ export default function AdminDashboard() {
   const [regPage, setRegPage] = useState(1);
   const [pitchPage, setPitchPage] = useState(1);
 
+  // Test confirmation (no real Paystack payment)
+  const [testRegId, setTestRegId] = useState('');
+  const [testConfirming, setTestConfirming] = useState(false);
+  const [showTestPanel, setShowTestPanel] = useState(false);
+
+  const handleTestConfirmation = async () => {
+    if (!testRegId.trim()) return;
+    setTestConfirming(true);
+    try {
+      const res = await fetch('/api/test-payment-confirmation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ registrationId: testRegId.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+      setToast({ message: data.message || `Email sent to ${data.emailSent ? 'user' : 'failed'}`, type: 'success' });
+      setTestRegId('');
+      await loadData();
+    } catch (err) {
+      setToast({ message: err instanceof Error ? err.message : 'Test failed', type: 'error' });
+    } finally {
+      setTestConfirming(false);
+    }
+  };
+
   // ── Data Loading ────────────────────────────────
   const loadData = async () => {
     setLoading(true);
@@ -538,6 +564,37 @@ export default function AdminDashboard() {
             <button onClick={loadData} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold flex items-center gap-2 transition">
               <RefreshCw className="w-4 h-4" /> Refresh
             </button>
+          </div>
+
+          {/* Test confirmation panel */}
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <button onClick={() => setShowTestPanel(!showTestPanel)} className="text-sm font-medium text-amber-700 hover:text-amber-800 flex items-center gap-2">
+              {showTestPanel ? '▼' : '▶'} Test confirmation email (no real payment)
+            </button>
+            {showTestPanel && (
+              <div className="mt-4 p-4 bg-amber-50 rounded-xl border border-amber-200">
+                <p className="text-sm text-gray-700 mb-3">
+                  <strong>Paystack test mode:</strong> Use <code className="bg-amber-100 px-1 rounded">sk_test_xxx</code> keys for no real charges. Test card: <code className="bg-amber-100 px-1 rounded">4084 0840 8408 4081</code> (Exp: 02/27, CVV: 408). Or simulate webhook below:
+                </p>
+                <div className="flex gap-3 flex-wrap items-center">
+                  <input
+                    type="text"
+                    placeholder="Registration ID (e.g. FTE26-ABC12)"
+                    value={testRegId}
+                    onChange={(e) => setTestRegId(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm min-w-[200px]"
+                  />
+                  <button
+                    onClick={handleTestConfirmation}
+                    disabled={testConfirming || !testRegId.trim()}
+                    className="px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white rounded-lg font-semibold text-sm flex items-center gap-2"
+                  >
+                    {testConfirming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                    Send test confirmation
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

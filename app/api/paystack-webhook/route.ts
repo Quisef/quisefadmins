@@ -1,8 +1,10 @@
 // app/api/paystack-webhook/route.ts
+// Primary flow: Paystack sends webhook on payment success → we send confirmation email immediately
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { db } from '@/lib/firebase';
 import { doc, updateDoc, getDoc } from 'firebase/firestore';
+import { sendConfirmationEmail } from '@/lib/sendConfirmationEmail';
 
 export async function POST(request: NextRequest) {
   try {
@@ -98,11 +100,9 @@ async function handleSuccessfulPayment(data: any) {
     
     console.log('✅ [WEBHOOK] Payment status updated to completed');
     
-    // ✅ STEP 2: Send confirmation email with error handling
-    // If email fails, payment is still successful and admin can send manually
+    // ✅ STEP 2: Send confirmation email immediately (primary flow - no HTTP, direct call)
     try {
       console.log('📧 [WEBHOOK] Sending confirmation email to:', registrationData.email);
-      
       await sendConfirmationEmail({
         email: registrationData.email,
         fullName: registrationData.fullName,
@@ -111,21 +111,10 @@ async function handleSuccessfulPayment(data: any) {
         categoryId: registrationData.category,
         price: registrationData.price,
       });
-      
-      // ✅ STEP 3: Update email sent status
-      await updateDoc(docRef, {
-        emailSent: true,
-        emailSentAt: new Date(),
-        updatedAt: new Date(),
-      });
-      
       console.log('✅ [WEBHOOK] Confirmation email sent successfully');
-      console.log('✅ [WEBHOOK] Email status updated in Firestore');
-      
     } catch (emailError) {
       console.error('❌ [WEBHOOK] Error sending confirmation email:', emailError);
-      console.log('⚠️ [WEBHOOK] Payment succeeded but email failed. Admin can send manually.');
-      // DON'T throw - payment was successful, email is just a notification
+      // Payment succeeded - admin can resend email manually as fallback
     }
     
     console.log(`✅ [WEBHOOK] Payment fully processed for: ${registrationId}`);
@@ -169,52 +158,5 @@ async function handleFailedPayment(data: any) {
   } catch (error) {
     console.error('❌ [WEBHOOK] Error handling failed payment:', error);
     throw error;
-  }
-}
-
-/**
- * Send confirmation email by calling our email API
- * This keeps email logic centralized and allows for manual sending
- */
-function getAppBaseUrl(): string {
-  // Prefer explicit config, then Vercel, then production fallback
-  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '');
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return 'https://quietshelter.org';
-}
-
-async function sendConfirmationEmail(params: {
-  email: string;
-  fullName: string;
-  uniqueId: string;
-  categoryName: string;
-  categoryId: string;
-  price: string;
-}) {
-  try {
-    const baseUrl = getAppBaseUrl();
-    const url = `${baseUrl}/api/send-confirmation-email`;
-    console.log('📧 [WEBHOOK] Calling email API:', url);
-    
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(params),
-    });
-    
-    if (!response.ok) {
-      const error = await response.json();
-      console.error('❌ [WEBHOOK] Email API error:', error);
-      throw new Error('Failed to send confirmation email');
-    }
-    
-    const result = await response.json();
-    console.log('✅ [WEBHOOK] Email API response:', result);
-    
-  } catch (error) {
-    console.error('❌ [WEBHOOK] Error calling email API:', error);
-    throw error; // Re-throw so caller can handle
   }
 }

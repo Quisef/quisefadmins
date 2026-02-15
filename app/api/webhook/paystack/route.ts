@@ -1,8 +1,10 @@
-// app/api/paystack-webhook/route.ts
+// app/api/webhook/paystack/route.ts
+// Alternative webhook URL - uses same direct email flow as paystack-webhook
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { db } from '@/lib/firebase';
 import { doc, updateDoc, getDoc } from 'firebase/firestore';
+import { sendConfirmationEmail } from '@/lib/sendConfirmationEmail';
 
 export async function POST(request: NextRequest) {
   try {
@@ -107,7 +109,7 @@ async function handleSuccessfulPayment(data: any) {
     
     console.log('✅ Payment status updated in database');
     
-    // Send confirmation email
+    // Send confirmation email immediately (direct call - no HTTP)
     try {
       await sendConfirmationEmail({
         email: registrationData.email,
@@ -116,11 +118,6 @@ async function handleSuccessfulPayment(data: any) {
         categoryName: registrationData.categoryName,
         categoryId: registrationData.category,
         price: registrationData.price,
-      });
-      await updateDoc(docRef, {
-        emailSent: true,
-        emailSentAt: new Date(),
-        updatedAt: new Date(),
       });
       console.log('✅ [WEBHOOK] Confirmation email sent to:', registrationData.email);
     } catch (emailError) {
@@ -168,53 +165,5 @@ async function handleFailedPayment(data: any) {
   } catch (error) {
     console.error('❌ Error handling failed payment:', error);
     throw error;
-  }
-}
-
-/**
- * Send confirmation email by calling our email API
- */
-function getAppBaseUrl(): string {
-  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '');
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return 'https://quietshelter.org';
-}
-
-async function sendConfirmationEmail(params: {
-  email: string;
-  fullName: string;
-  uniqueId: string;
-  categoryName: string;
-  categoryId: string;
-  price: string;
-}) {
-  try {
-    console.log('📧 Sending confirmation email to:', params.email);
-    const baseUrl = getAppBaseUrl();
-    const url = `${baseUrl}/api/send-confirmation-email`;
-    console.log('📧 [WEBHOOK] Calling email API:', url);
-    
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(params),
-    });
-    
-    if (!response.ok) {
-      const error = await response.json();
-      console.error('❌ Email API error:', error);
-      throw new Error('Failed to send confirmation email');
-    }
-    
-    const result = await response.json();
-    console.log('✅ Email API response:', result);
-    console.log('✅ Confirmation email sent successfully to:', params.email);
-    
-  } catch (error) {
-    console.error('❌ Error sending confirmation email:', error);
-    // Don't throw - we don't want email failures to break the webhook
-    // The payment was successful, email is just a notification
   }
 }

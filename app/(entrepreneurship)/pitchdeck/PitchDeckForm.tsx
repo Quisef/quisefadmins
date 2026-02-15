@@ -8,23 +8,43 @@ import {
   AlertCircle
 } from 'lucide-react';
 
-// Inline client-side submission helper to avoid importing a non-module server file
+// Inline client-side submission helper
 async function savePitchDeck(data: any, file: File) {
   const form = new FormData();
   Object.entries(data).forEach(([k, v]) => form.append(k, String(v ?? '')));
   form.append('pitchDeck', file);
 
-  const res = await fetch('/api/pitchdeck', {
-    method: 'POST',
-    body: form,
-  });
-
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(body || 'Submission failed');
+  let res: Response;
+  try {
+    res = await fetch('/api/pitchdeck', {
+      method: 'POST',
+      body: form,
+    });
+  } catch (err) {
+    console.error('Pitch deck fetch error:', err);
+    throw new Error(
+      'Unable to connect. Please check your internet connection and try again.'
+    );
   }
 
-  return res.json();
+  const bodyText = await res.text();
+  if (!res.ok) {
+    try {
+      const json = JSON.parse(bodyText);
+      throw new Error(json.error || json.message || 'Submission failed');
+    } catch (parseErr) {
+      if (parseErr instanceof Error && parseErr.message !== 'Submission failed') {
+        throw parseErr;
+      }
+      throw new Error(bodyText || 'Submission failed');
+    }
+  }
+
+  try {
+    return JSON.parse(bodyText);
+  } catch {
+    return { success: true };
+  }
 }
 
 export default function PitchDeckForm() {
