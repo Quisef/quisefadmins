@@ -1,5 +1,6 @@
 // lib/sendConfirmationEmail.ts
 // Shared logic for sending payment confirmation emails - used by webhook (primary) and API route (admin fallback)
+// Supports Resend (recommended) or SMTP/nodemailer
 import nodemailer from 'nodemailer';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -15,13 +16,8 @@ export interface ConfirmationEmailParams {
 
 const PITCH_DECK_ELIGIBLE = ['fully-funded', 'partially-funded'];
 
-export async function sendConfirmationEmail(params: ConfirmationEmailParams): Promise<void> {
+function getHtmlAndText(params: ConfirmationEmailParams): { html: string; text: string } {
   const { email, fullName, uniqueId, categoryName, categoryId, price } = params;
-
-  if (!email || !fullName || !uniqueId || !categoryName || !price) {
-    throw new Error('Missing required fields for confirmation email');
-  }
-
   const includePitchDeck = categoryId && PITCH_DECK_ELIGIBLE.includes(String(categoryId));
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://quietshelter.org';
   const pitchDeckUrl = `${baseUrl}/pitchdeck?id=${encodeURIComponent(uniqueId)}&name=${encodeURIComponent(fullName)}&email=${encodeURIComponent(email)}&category=${encodeURIComponent(categoryName)}`;
@@ -113,24 +109,86 @@ ${includePitchDeck ? `Submit your pitch deck: ${pitchDeckUrl}` : `You're all set
 Contact: support@quietshelter.org
 `;
 
+  return { html: htmlContent, text: textContent };
+}
+
+export async function sendConfirmationEmail(params: ConfirmationEmailParams): Promise<void> {
+  const { email, fullName, uniqueId, categoryName } = params;
+
+  if (!email || !fullName || !uniqueId || !categoryName || !params.price) {
+    throw new Error('Missing required fields for confirmation email');
+  }
+
+  const subject = `✅ Payment Confirmed - ${uniqueId} | FuturenTrepeneurship NYSC 2026`;
+  const { html, text } = getHtmlAndText(params);
+
+  // Option 1: Resend (recommended - simpler, reliable in serverless)
+  const resendKey = process.env.RESEND_API_KEY;
+  const fromEmail = process.env.RESEND_FROM_EMAIL || process.env.SMTP_FROM_EMAIL;
+
+  if (resendKey) {
+    if (!fromEmail) {
+      throw new Error('RESEND_FROM_EMAIL or SMTP_FROM_EMAIL required when using Resend (e.g. FuturenTrepeneurship <noreply@quietshelter.org>)');
+    }
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${resendKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: fromEmail,
+        to: email,
+        subject,
+        html,
+        text,
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      const msg = err?.message || err?.error || await res.text();
+      throw new Error(`Resend failed: ${msg || res.statusText}`);
+    }
+    await updateEmailSent(uniqueId);
+    return;
+  }
+
+  // Option 2: SMTP / Nodemailer
+  const smtpHost = process.env.SMTP_HOST;
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASSWORD;
+
+  if (!smtpHost || !smtpUser || !smtpPass) {
+    throw new Error(
+      'Email not configured. Add either RESEND_API_KEY + RESEND_FROM_EMAIL, or SMTP_HOST, SMTP_USER, SMTP_PASSWORD to your .env'
+    );
+  }
+
   const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
+    host: smtpHost,
     port: parseInt(process.env.SMTP_PORT || '587'),
     secure: process.env.SMTP_SECURE === 'true',
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASSWORD,
-    },
+    auth: { user: smtpUser, pass: smtpPass },
   });
 
-  await transporter.sendMail({
-    from: `"FuturenTrepeneurship" <${process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER}>`,
-    to: email,
-    subject: `✅ Payment Confirmed - ${uniqueId} | FuturenTrepeneurship NYSC 2026`,
-    html: htmlContent,
-    text: textContent,
-  });
+  try {
+    await transporter.sendMail({
+      from: `"FuturenTrepeneurship" <${process.env.SMTP_FROM_EMAIL || smtpUser}>`,
+      to: email,
+      subject,
+      html,
+      text,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new Error(`SMTP failed: ${msg}`);
+  }
 
+  await updateEmailSent(uniqueId);
+}
+
+async function updateEmailSent(uniqueId: string): Promise<void> {
   try {
     const docRef = doc(db, 'registrations', uniqueId);
     await updateDoc(docRef, {
