@@ -109,7 +109,6 @@ async function handleSuccessfulPayment(data: any) {
     
     console.log('✅ Payment status updated in database');
     
-    // Send confirmation email immediately (direct call - no HTTP)
     try {
       await sendConfirmationEmail({
         email: registrationData.email,
@@ -120,8 +119,15 @@ async function handleSuccessfulPayment(data: any) {
         price: registrationData.price,
       });
       console.log('✅ [WEBHOOK] Confirmation email sent to:', registrationData.email);
+      await updateDoc(docRef, { emailError: null, updatedAt: new Date() });
     } catch (emailError) {
-      console.error('❌ [WEBHOOK] Email failed:', emailError);
+      const errMsg = emailError instanceof Error ? emailError.message : String(emailError);
+      console.error('❌ [WEBHOOK] Email failed:', errMsg);
+      await updateDoc(docRef, {
+        emailError: errMsg,
+        emailErrorAt: new Date(),
+        updatedAt: new Date(),
+      });
     }
     
     console.log(`✅ Payment processed successfully for: ${registrationId}`);

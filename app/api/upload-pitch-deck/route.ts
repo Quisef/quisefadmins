@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     const result = await new Promise<any>((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         {
-          folder: 'futurentrepeneurship/pitch-decks',
+          folder: 'quietshelter/pitchdeck',
           resource_type: 'raw',
           public_id: publicId,
           tags: [`registration_${registrationId}`, 'pitch_deck', new Date().getFullYear().toString()],

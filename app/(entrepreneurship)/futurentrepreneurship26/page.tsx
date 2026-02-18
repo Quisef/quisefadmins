@@ -359,8 +359,9 @@ export default function FuturenTrepeneurship() {
 
       console.log('✅ Registration saved, initializing Paystack payment...');
 
-      // 2. Build callback URL
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+      // 2. Build callback URL - always use production (quietshelter.org), never preview URLs
+      const url = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+      const baseUrl = url.includes('quietshelter.org') ? url.replace(/\/$/, '') : 'https://quietshelter.org';
       const callbackUrl = `${baseUrl}/futurentrepreneurship26/payment-success?` +
         `reference=${encodeURIComponent(newUniqueId)}&` +
         `status=success&` +

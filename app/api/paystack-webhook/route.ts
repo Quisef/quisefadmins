@@ -112,9 +112,16 @@ async function handleSuccessfulPayment(data: any) {
         price: registrationData.price,
       });
       console.log('✅ [WEBHOOK] Confirmation email sent successfully');
+      // Clear any previous error
+      await updateDoc(docRef, { emailError: null, updatedAt: new Date() });
     } catch (emailError) {
-      console.error('❌ [WEBHOOK] Error sending confirmation email:', emailError);
-      // Payment succeeded - admin can resend email manually as fallback
+      const errMsg = emailError instanceof Error ? emailError.message : String(emailError);
+      console.error('❌ [WEBHOOK] Email failed:', errMsg);
+      await updateDoc(docRef, {
+        emailError: errMsg,
+        emailErrorAt: new Date(),
+        updatedAt: new Date(),
+      });
     }
     
     console.log(`✅ [WEBHOOK] Payment fully processed for: ${registrationId}`);

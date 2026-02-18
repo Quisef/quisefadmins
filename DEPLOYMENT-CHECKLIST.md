@@ -24,11 +24,16 @@ RESEND_FROM_EMAIL=FuturenTrepeneurship <noreply@quietshelter.org>
 2. Use Admin panel → "Send test confirmation" with a registration ID
 3. Check inbox (and spam) for the confirmation email
 
-### 4. Production Environment (Vercel)
+### 4. Production Environment (Vercel) — CRITICAL
+**The Paystack webhook runs on your DEPLOYED server, NOT localhost.**  
+Your `.env.local` is only used when running `npm run dev` locally.
+
 - Project → Settings → Environment Variables
-- Add `RESEND_API_KEY` and `RESEND_FROM_EMAIL`
+- Add `RESEND_API_KEY` and `RESEND_FROM_EMAIL` for **Production**
 - Enable for Production (and Preview if needed)
-- Redeploy after adding variables
+- **Redeploy** after adding variables — env vars only apply to new deployments
+
+Without these in production, Paystack webhook will receive payments but email will fail (admin can still resend).
 
 ### 5. Paystack Webhook
 - Paystack Dashboard → Settings → API Keys & Webhooks
@@ -37,7 +42,10 @@ RESEND_FROM_EMAIL=FuturenTrepeneurship <noreply@quietshelter.org>
 - Ensure using correct secret key (live vs test)
 
 ### 6. Other Production Variables
-- `NEXT_PUBLIC_APP_URL` = `https://quietshelter.org`
+- `NEXT_PUBLIC_APP_URL` = `https://quietshelter.org` (ensures pitch deck & callback go to production)
 - `PAYSTACK_SECRET_KEY` = your live key
 - Firebase vars (NEXT_PUBLIC_*, etc.)
-- Cloudinary vars (for pitch deck uploads)
+- Cloudinary (for pitch deck uploads):
+  - `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME`
+  - `CLOUDINARY_API_KEY` (or `NEXT_PUBLIC_CLOUDINARY_API_KEY`)
+  - `CLOUDINARY_API_SECRET`

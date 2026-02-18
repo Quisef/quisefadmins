@@ -19,8 +19,10 @@ const PITCH_DECK_ELIGIBLE = ['fully-funded', 'partially-funded'];
 function getHtmlAndText(params: ConfirmationEmailParams): { html: string; text: string } {
   const { email, fullName, uniqueId, categoryName, categoryId, price } = params;
   const includePitchDeck = categoryId && PITCH_DECK_ELIGIBLE.includes(String(categoryId));
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://quietshelter.org';
-  const pitchDeckUrl = `${baseUrl}/pitchdeck?id=${encodeURIComponent(uniqueId)}&name=${encodeURIComponent(fullName)}&email=${encodeURIComponent(email)}&category=${encodeURIComponent(categoryName)}`;
+  // Always use production URL - never Vercel preview/test URLs (e.g. test-r9084zvy63xgw63d)
+  const base = (process.env.PITCH_DECK_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '');
+  const pitchDeckBaseUrl = base && base.includes('quietshelter.org') ? base : 'https://quietshelter.org';
+  const pitchDeckUrl = `${pitchDeckBaseUrl}/pitchdeck?id=${encodeURIComponent(uniqueId)}&name=${encodeURIComponent(fullName)}&email=${encodeURIComponent(email)}&category=${encodeURIComponent(categoryName)}`;
 
   const pitchDeckSection = includePitchDeck ? `
     <div class="next-steps">
@@ -194,6 +196,7 @@ async function updateEmailSent(uniqueId: string): Promise<void> {
     await updateDoc(docRef, {
       emailSent: true,
       emailSentAt: new Date(),
+      emailError: null,
       updatedAt: new Date(),
     });
   } catch (e) {

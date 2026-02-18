@@ -25,8 +25,11 @@ async function uploadToCloudinary(
   registrationId: string
 ): Promise<{ url: string; publicId: string }> {
   const cloudinary = (await import('@/lib/cloudinary')).default;
-  if (!process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
-    throw new Error('Cloudinary is not configured. Add NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET to .env');
+  const hasCloudinary = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME &&
+    (process.env.CLOUDINARY_API_KEY || process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY) &&
+    process.env.CLOUDINARY_API_SECRET;
+  if (!hasCloudinary) {
+    throw new Error('Cloudinary not configured. Add NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY (or NEXT_PUBLIC_CLOUDINARY_API_KEY), CLOUDINARY_API_SECRET to .env');
   }
 
   const bytes = await file.arrayBuffer();
@@ -35,7 +38,7 @@ async function uploadToCloudinary(
   const result = await new Promise<any>((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
       {
-        folder: 'futurentrepeneurship/pitch-decks',
+        folder: 'quietshelter/pitchdeck',
         resource_type: 'raw',
         public_id: `${registrationId}_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`,
         tags: [`registration_${registrationId}`, 'pitch_deck', new Date().getFullYear().toString()],

@@ -29,6 +29,8 @@ interface Registration {
   updatedAt: Timestamp;
   emailSent?: boolean;
   emailSentAt?: Timestamp;
+  emailError?: string;
+  emailErrorAt?: Timestamp;
   confirmedBy?: 'webhook' | 'admin';
   manualConfirmation?: boolean;
 }
@@ -720,7 +722,7 @@ export default function AdminDashboard() {
                 <table className="w-full min-w-max">
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
-                      {['ID', 'Name', 'Email', 'Phone', 'Area', 'Category', 'Price', 'Payment', 'Email', 'Date', 'Actions'].map(h => (
+                      {['ID', 'Name', 'Email', 'Phone', 'Area', 'Category', 'Price', 'Payment', 'Email Sent', 'Date', 'Actions'].map(h => (
                         <th key={h} className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">{h}</th>
                       ))}
                     </tr>
@@ -747,7 +749,13 @@ export default function AdminDashboard() {
                           {reg.emailSent ? (
                             <span className="flex items-center gap-1 text-emerald-600 text-sm"><CheckCircle className="w-4 h-4" /> Sent</span>
                           ) : (
-                            <span className="flex items-center gap-1 text-gray-400 text-sm"><XCircle className="w-4 h-4" /> Not Sent</span>
+                            <span
+                              className="flex items-center gap-1 text-gray-400 text-sm cursor-help"
+                              title={reg.emailError ? `Failed: ${reg.emailError}` : undefined}
+                            >
+                              <XCircle className="w-4 h-4" /> Not Sent
+                              {reg.emailError && <span className="text-red-500 text-xs ml-1" title={reg.emailError}>⚠️</span>}
+                            </span>
                           )}
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-600">{reg.createdAt?.toDate().toLocaleDateString() || 'N/A'}</td>

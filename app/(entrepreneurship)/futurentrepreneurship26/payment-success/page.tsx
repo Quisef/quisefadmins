@@ -87,8 +87,10 @@ function PaymentSuccessContent() {
   const pitchDeckEligibleCategories = ['fully-funded', 'partially-funded'];
   const showPitchDeck = registrationData?.categoryId && pitchDeckEligibleCategories.includes(String(registrationData.categoryId));
 
+  // Always route to production pitch deck URL (quietshelter.org)
+  const pitchDeckBase = 'https://quietshelter.org';
   const pitchDeckUrl = showPitchDeck ? 
-    `/pitchdeck?id=${encodeURIComponent(reference || '')}` +
+    `${pitchDeckBase}/pitchdeck?id=${encodeURIComponent(reference || '')}` +
     `&name=${encodeURIComponent(registrationData?.fullName || '')}` +
     `&email=${encodeURIComponent(registrationData?.email || '')}` +
     `&category=${encodeURIComponent(registrationData?.categoryName || '')}` 
