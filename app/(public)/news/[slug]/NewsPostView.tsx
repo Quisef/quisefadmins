@@ -63,13 +63,20 @@ export default function NewsPostView({ post }: NewsPostViewProps) {
               </div>
             </div>
 
-            {/* Blog content - rendering as paragraphs */}
+            {/* Blog content - supports HTML (from Draft.js) or legacy plain text */}
             <div className="prose prose-lg max-w-none">
-              {post.content.split('\n\n').map((paragraph, index) => (
-                <p key={index} className="mb-6 text-gray-700 leading-relaxed">
-                  {paragraph}
-                </p>
-              ))}
+              {post.content.trim().startsWith("<") ? (
+                <div
+                  className="blog-content [&_p]:mb-6 [&_p]:text-gray-700 [&_p]:leading-relaxed"
+                  dangerouslySetInnerHTML={{ __html: post.content }}
+                />
+              ) : (
+                post.content.split('\n\n').map((paragraph, index) => (
+                  <p key={index} className="mb-6 text-gray-700 leading-relaxed">
+                    {paragraph}
+                  </p>
+                ))
+              )}
             </div>
           </div>
         </div>

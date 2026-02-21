@@ -5,8 +5,7 @@ import { collection, query, orderBy, getDocs, deleteDoc, doc, Timestamp } from '
 import { db } from '@/lib/firebase';
 import { 
   Download, Search, Filter, Eye, Trash2, AlertTriangle, Mail, Send, 
-  CheckCircle, XCircle, Loader2, RefreshCw, FileText, Building2, DollarSign, Users,
-  TrendingUp, Clock
+  CheckCircle, XCircle, Loader2, RefreshCw, FileText, TrendingUp, Clock
 } from 'lucide-react';
 
 // ────────────────────────────────────────────────
@@ -41,20 +40,18 @@ interface PitchDeck {
   fullName: string;
   email: string;
   category: string;
-  businessName: string;
-  businessDescription: string;
-  problemStatement?: string;
-  solution?: string;
-  targetMarket?: string;
-  revenueModel?: string;
-  fundingNeeds: string;
-  teamSize: string;
-  pitchDeckUrl: string;
-  pitchDeckFileName: string;
-  cloudinaryPublicId: string;
-  fileSize?: number;
-  fileType?: string;
-  fileFormat?: string;
+  pitchInfo?: string; // Single field: business info, problem, solution, etc. (legacy records may not have it)
+  // Legacy fields (optional for older records)
+  businessName?: string;
+  businessDescription?: string;
+  fundingNeeds?: string;
+  teamSize?: string;
+  pitchDeckUrl: string | null;
+  pitchDeckFileName: string | null;
+  cloudinaryPublicId: string | null;
+  fileSize?: number | null;
+  fileType?: string | null;
+  fileFormat?: string | null;
   submissionDate: Timestamp;
   status: string;
   createdAt?: Timestamp;
@@ -468,7 +465,7 @@ export default function AdminDashboard() {
   const filteredPitchDecks = useMemo(() => pitchDecks.filter(p => {
     const s = searchTerm.toLowerCase();
     return (
-      `${p.fullName} ${p.businessName} ${p.registrationId} ${p.email}`.toLowerCase().includes(s) &&
+      `${p.fullName} ${p.pitchInfo || ''} ${p.businessName || ''} ${p.registrationId} ${p.email}`.toLowerCase().includes(s) &&
       (filterPitchStatus === 'all' || p.status === filterPitchStatus)
     );
   }), [pitchDecks, searchTerm, filterPitchStatus]);
@@ -514,10 +511,10 @@ export default function AdminDashboard() {
   };
 
   const exportPitchDecksCSV = () => {
-    const headers = ['Reg ID','Name','Email','Business','Category','Funding Needs','Team','Status','File Size','URL','Cloudinary ID','Date'];
+    const headers = ['Reg ID','Name','Email','Pitch Info','Category','Status','File Size','URL','Cloudinary ID','Date'];
     const rows = filteredPitchDecks.map(p => [
-      p.registrationId, p.fullName, p.email, p.businessName, p.category, p.fundingNeeds, p.teamSize, p.status,
-      formatFileSize(p.fileSize), p.pitchDeckUrl || '', p.cloudinaryPublicId || '',
+      p.registrationId, p.fullName, p.email, (p.pitchInfo || p.businessDescription || p.businessName || '').substring(0, 200), p.category, p.status,
+      formatFileSize(p.fileSize ?? undefined), p.pitchDeckUrl || '', p.cloudinaryPublicId || '',
       p.submissionDate?.toDate().toLocaleDateString() || 'N/A'
     ]);
     downloadCSV([headers.join(','), ...rows.map(r => r.map(v => `"${v}"`).join(','))].join('\n'), 'pitch-decks');
@@ -807,7 +804,7 @@ export default function AdminDashboard() {
                 <table className="w-full min-w-max">
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
-                      {['Reg ID', 'Applicant', 'Business', 'Pitch Deck', 'Status', 'Date', 'Actions'].map(h => (
+                      {['Reg ID', 'Applicant', 'Pitch Info', 'Pitch Deck', 'Status', 'Date', 'Actions'].map(h => (
                         <th key={h} className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">{h}</th>
                       ))}
                     </tr>
@@ -822,29 +819,27 @@ export default function AdminDashboard() {
                         <td className="px-6 py-4">
                           <div className="font-medium">{pitch.fullName}</div>
                           <div className="text-sm text-gray-500">{pitch.email}</div>
-                          <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
-                            <Users className="w-3.5 h-3.5" /> {pitch.teamSize}
-                          </div>
                         </td>
                         <td className="px-6 py-4 max-w-xs">
-                          <div className="font-medium flex items-center gap-2 mb-1">
-                            <Building2 className="w-4 h-4 text-emerald-600" /> {pitch.businessName}
-                          </div>
-                          <div className="text-sm text-gray-500 line-clamp-2 mb-2">{pitch.businessDescription}</div>
-                          <div className="flex items-center gap-2 text-sm">
-                            <DollarSign className="w-4 h-4 text-amber-600" />
-                            <span className="font-semibold">{pitch.fundingNeeds}</span>
+                          <div className="text-sm text-gray-700 line-clamp-4 whitespace-pre-wrap">
+                            {pitch.pitchInfo || pitch.businessDescription || pitch.businessName || '—'}
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="text-sm font-medium mb-1">{pitch.pitchDeckFileName}</div>
-                          <div className="text-xs text-gray-500">
-                            {formatFileSize(pitch.fileSize)} {pitch.fileFormat && `• ${pitch.fileFormat.toUpperCase()}`}
-                          </div>
-                          {pitch.cloudinaryPublicId && (
-                            <div className="text-xs text-gray-400 font-mono truncate max-w-[180px] mt-1">
-                              {pitch.cloudinaryPublicId}
-                            </div>
+                          {pitch.pitchDeckUrl ? (
+                            <>
+                              <div className="text-sm font-medium mb-1">{pitch.pitchDeckFileName || 'File'}</div>
+                              <div className="text-xs text-gray-500">
+                                {formatFileSize(pitch.fileSize ?? undefined)} {pitch.fileFormat && `• ${pitch.fileFormat.toUpperCase()}`}
+                              </div>
+                              {pitch.cloudinaryPublicId && (
+                                <div className="text-xs text-gray-400 font-mono truncate max-w-[180px] mt-1">
+                                  {pitch.cloudinaryPublicId}
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <span className="text-sm text-gray-400">No file uploaded</span>
                           )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -857,13 +852,17 @@ export default function AdminDashboard() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex flex-wrap gap-2">
-                            <a href={pitch.pitchDeckUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg text-xs font-semibold border border-emerald-200 transition">
-                              <Eye className="w-3.5 h-3.5" /> View
-                            </a>
-                            <a href={pitch.pitchDeckUrl} download className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-xs font-semibold border border-blue-200 transition">
-                              <Download className="w-3.5 h-3.5" /> Download
-                            </a>
-                            <button onClick={() => handleDeleteClick('pitch', pitch.id, pitch.businessName)} disabled={deleting} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-700 hover:bg-red-100 rounded-lg text-xs font-semibold border border-red-200 transition">
+                            {pitch.pitchDeckUrl && (
+                              <>
+                                <a href={pitch.pitchDeckUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg text-xs font-semibold border border-emerald-200 transition">
+                                  <Eye className="w-3.5 h-3.5" /> View
+                                </a>
+                                <a href={pitch.pitchDeckUrl} download className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-xs font-semibold border border-blue-200 transition">
+                                  <Download className="w-3.5 h-3.5" /> Download
+                                </a>
+                              </>
+                            )}
+                            <button onClick={() => handleDeleteClick('pitch', pitch.id, pitch.fullName || pitch.id)} disabled={deleting} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-700 hover:bg-red-100 rounded-lg text-xs font-semibold border border-red-200 transition">
                               <Trash2 className="w-3.5 h-3.5" /> Delete
                             </button>
                           </div>

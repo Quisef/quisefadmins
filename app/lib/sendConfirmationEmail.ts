@@ -34,9 +34,9 @@ function getHtmlAndText(params: ConfirmationEmailParams): { html: string; text: 
       </ul>
     </div>
     <div style="text-align: center; margin: 30px 0;">
-      <a href="${pitchDeckUrl}" class="button" style="display: inline-block; background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%); color: white !important; padding: 15px 35px; text-decoration: none; border-radius: 10px; font-weight: bold;">📊 Submit Your Pitch Deck Now →</a>
+      <a href="${pitchDeckUrl}" class="button" style="display: inline-block; background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%); color: white !important; padding: 15px 35px; text-decoration: none; border-radius: 10px; font-weight: bold;">📊 Submit Your Pitch Deck Now to Contest for the Scholarship</a>
     </div>
-    <div class="warning"><p><strong>⏰ Important:</strong> Submit your pitch deck to be eligible for the business plan competition and funding opportunities!</p></div>
+    <div class="warning"><p><strong>⏰ Important:</strong> Submit your pitch deck to contest for the scholarship!</p></div>
     <div style="margin-top: 20px; padding: 15px; background: #f9fafb; border-radius: 8px; font-size: 12px;"><p style="margin: 0; word-break: break-all;">${pitchDeckUrl}</p></div>
   ` : `
     <div class="next-steps" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-left: 4px solid #f59e0b;">

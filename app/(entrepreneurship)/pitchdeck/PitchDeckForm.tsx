@@ -4,15 +4,14 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
   Upload, FileText, Check, Loader2, ArrowLeft,
-  Lightbulb, TrendingUp, Users, Target, DollarSign,
-  AlertCircle
+  Lightbulb, AlertCircle
 } from 'lucide-react';
 
-// Inline client-side submission helper
-async function savePitchDeck(data: any, file: File) {
+// Inline client-side submission helper (file is optional)
+async function savePitchDeck(data: any, file: File | null) {
   const form = new FormData();
   Object.entries(data).forEach(([k, v]) => form.append(k, String(v ?? '')));
-  form.append('pitchDeck', file);
+  if (file) form.append('pitchDeck', file);
 
   let res: Response;
   try {
@@ -51,18 +50,11 @@ export default function PitchDeckForm() {
   const searchParams = useSearchParams();
 
   const [formData, setFormData] = useState({
-    registrationId:      '',
-    fullName:            '',
-    email:               '',
-    category:            '',
-    businessName:        '',
-    businessDescription: '',
-    problemStatement:    '',
-    solution:            '',
-    targetMarket:        '',
-    revenueModel:        '',
-    fundingNeeds:        '',
-    teamSize:            '',
+    registrationId: '',
+    fullName: '',
+    email: '',
+    category: '',
+    pitchInfo: '', // Single field: business info, problem, solution, market, revenue, team, etc.
   });
 
   const [pitchDeckFile, setPitchDeckFile] = useState<File | null>(null);
@@ -131,15 +123,7 @@ export default function PitchDeckForm() {
 
   const validateForm = () => {
     const errs: Record<string, string> = {};
-    if (!formData.businessName.trim())        errs.businessName        = 'Business name is required';
-    if (!formData.businessDescription.trim()) errs.businessDescription = 'Business description is required';
-    if (!formData.problemStatement.trim())    errs.problemStatement    = 'Problem statement is required';
-    if (!formData.solution.trim())            errs.solution            = 'Solution is required';
-    if (!formData.targetMarket.trim())        errs.targetMarket        = 'Target market is required';
-    if (!formData.revenueModel.trim())        errs.revenueModel        = 'Revenue model is required';
-    if (!formData.fundingNeeds.trim())        errs.fundingNeeds        = 'Funding needs are required';
-    if (!formData.teamSize)                   errs.teamSize            = 'Team size is required';
-    if (!pitchDeckFile)                       errs.pitchDeck           = 'Pitch deck file is required';
+    if (!formData.pitchInfo.trim()) errs.pitchInfo = 'Please provide your business pitch information';
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -152,7 +136,7 @@ export default function PitchDeckForm() {
     setSubmitError('');
 
     try {
-      await savePitchDeck(formData, pitchDeckFile!);
+      await savePitchDeck(formData, pitchDeckFile);
       setSubmitSuccess(true);
     } catch (error) {
       console.error('Pitch deck submission error:', error);
@@ -185,7 +169,6 @@ export default function PitchDeckForm() {
               {formData.registrationId}
             </p>
             <div className="space-y-2 text-left border-t border-emerald-200 pt-4">
-              <p className="text-sm sm:text-base text-gray-700 break-words"><span className="font-semibold">Business Name:</span> {formData.businessName}</p>
               <p className="text-sm sm:text-base text-gray-700 break-words"><span className="font-semibold">Submitted by:</span> {formData.fullName}</p>
             </div>
           </div>
@@ -249,14 +232,6 @@ export default function PitchDeckForm() {
     `w-full px-4 sm:px-5 py-3 sm:py-4 border rounded-xl transition focus:ring-2 focus:outline-none text-gray-900 placeholder-gray-400 text-sm sm:text-base ${
       errors[field] ? 'border-red-400 focus:ring-red-200' : 'border-gray-300 focus:ring-emerald-300 focus:border-emerald-500'
     }`;
-
-  const textareas: { name: string; label: string; icon: React.FC<any>; placeholder: string; rows: number }[] = [
-    { name: 'businessDescription', label: 'Business Description (Elevator Pitch)', icon: FileText,     placeholder: 'Describe your business in 2–3 sentences…',                   rows: 4 },
-    { name: 'problemStatement',    label: 'Problem Statement',                     icon: AlertCircle,   placeholder: 'What problem are you solving? Why does it matter?',          rows: 4 },
-    { name: 'solution',            label: 'Your Solution',                         icon: Lightbulb,     placeholder: 'How does your product / service solve the problem?',         rows: 4 },
-    { name: 'targetMarket',        label: 'Target Market',                         icon: Users,         placeholder: 'Who are your customers? Market size and demographics…',      rows: 3 },
-    { name: 'revenueModel',        label: 'Revenue Model',                         icon: TrendingUp,    placeholder: 'How will you make money? Pricing strategy…',               rows: 3 },
-  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-teal-50/30 py-8 sm:py-12 px-4 sm:px-5">
@@ -332,80 +307,26 @@ export default function PitchDeckForm() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-7">
-            {/* Business Name */}
+            {/* Single pitch info field */}
             <div>
               <label className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                <Target className="w-4 h-4 text-emerald-600 flex-shrink-0" /> Business / Startup Name *
+                <FileText className="w-4 h-4 text-emerald-600 flex-shrink-0" /> Business Pitch Information *
               </label>
-              <input 
-                type="text" 
-                name="businessName" 
-                value={formData.businessName} 
-                onChange={handleChange} 
-                className={inputClass('businessName')} 
-                placeholder="e.g., GreenTech Solutions" 
+              <textarea
+                name="pitchInfo"
+                value={formData.pitchInfo}
+                onChange={handleChange}
+                rows={12}
+                className={`${inputClass('pitchInfo')} resize-none`}
+                placeholder="Include: startup/business name, description, problem statement, solution, target market, revenue model, funding needs, team size, and any other relevant details…"
               />
-              {errors.businessName && <p className="mt-1.5 text-sm text-red-600">{errors.businessName}</p>}
+              {errors.pitchInfo && <p className="mt-1.5 text-sm text-red-600">{errors.pitchInfo}</p>}
             </div>
 
-            {/* Dynamic textareas */}
-            {textareas.map(({ name, label, icon: Icon, placeholder, rows }) => (
-              <div key={name}>
-                <label className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                  <Icon className="w-4 h-4 text-emerald-600 flex-shrink-0" /> {label} *
-                </label>
-                <textarea
-                  name={name}
-                  value={(formData as any)[name]}
-                  onChange={handleChange}
-                  rows={rows}
-                  className={`${inputClass(name)} resize-none`}
-                  placeholder={placeholder}
-                />
-                {errors[name] && <p className="mt-1.5 text-sm text-red-600">{errors[name]}</p>}
-              </div>
-            ))}
-
-            {/* Funding + Team row - Enhanced Mobile */}
-            <div className="grid sm:grid-cols-2 gap-5 sm:gap-6">
-              <div>
-                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
-                  <DollarSign className="w-4 h-4 text-emerald-600 flex-shrink-0" /> Funding Needs *
-                </label>
-                <input 
-                  type="text" 
-                  name="fundingNeeds" 
-                  value={formData.fundingNeeds} 
-                  onChange={handleChange} 
-                  className={inputClass('fundingNeeds')} 
-                  placeholder="e.g., ₦2,000,000" 
-                />
-                {errors.fundingNeeds && <p className="mt-1.5 text-sm text-red-600">{errors.fundingNeeds}</p>}
-              </div>
-              <div>
-                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
-                  <Users className="w-4 h-4 text-emerald-600 flex-shrink-0" /> Team Size *
-                </label>
-                <select 
-                  name="teamSize" 
-                  value={formData.teamSize} 
-                  onChange={handleChange} 
-                  className={`${inputClass('teamSize')} bg-white`}
-                >
-                  <option value="">Select team size</option>
-                  <option value="1">Solo Founder</option>
-                  <option value="2-3">2–3 Members</option>
-                  <option value="4-6">4–6 Members</option>
-                  <option value="7+">7+ Members</option>
-                </select>
-                {errors.teamSize && <p className="mt-1.5 text-sm text-red-600">{errors.teamSize}</p>}
-              </div>
-            </div>
-
-            {/* File upload - Enhanced Mobile */}
+            {/* Optional file upload */}
             <div>
               <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
-                <Upload className="w-4 h-4 text-emerald-600 flex-shrink-0" /> Upload Pitch Deck *
+                <Upload className="w-4 h-4 text-emerald-600 flex-shrink-0" /> Upload Pitch Deck (optional)
               </label>
               <div className={`border-2 border-dashed rounded-xl p-6 sm:p-8 text-center transition ${
                 errors.pitchDeck ? 'border-red-400 bg-red-50' : 'border-gray-300 hover:border-emerald-500 bg-gray-50'
@@ -429,8 +350,8 @@ export default function PitchDeckForm() {
                   ) : (
                     <>
                       <Upload className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400 mx-auto mb-2 sm:mb-3" />
-                      <p className="text-sm sm:text-base text-gray-700 font-medium mb-1">Click to upload pitch deck</p>
-                      <p className="text-xs sm:text-sm text-gray-500">PDF or PowerPoint (Max 10MB)</p>
+                      <p className="text-sm sm:text-base text-gray-700 font-medium mb-1">Click to upload slides or PDF (optional)</p>
+                      <p className="text-xs sm:text-sm text-gray-500">PDF or PowerPoint, Max 10MB</p>
                     </>
                   )}
                 </label>

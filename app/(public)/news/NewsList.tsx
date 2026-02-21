@@ -83,7 +83,12 @@ const BlogCard = ({ post }: { post: Post }) => {
           Posted on {formattedDate}
         </p>
         <p className="text-gray-600 line-clamp-3">
-          {post.content.length > 150 ? `${post.content.substring(0, 150)}...` : post.content}
+          {(() => {
+            const text = post.content.startsWith("<")
+              ? post.content.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim()
+              : post.content;
+            return text.length > 150 ? `${text.substring(0, 150)}...` : text;
+          })()}
         </p>
         <p className="text-gray-500 text-sm">By {post.author || 'Anonymous'}</p>
       </div>

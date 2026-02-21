@@ -61,27 +61,30 @@ async function uploadToCloudinary(
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
-    const file = formData.get('pitchDeck') as File;
+    const file = formData.get('pitchDeck') as File | null;
+    const pitchInfo = String(formData.get('pitchInfo') || '').trim();
 
-    if (!file) {
+    // pitchInfo is required; file is optional
+    if (!pitchInfo) {
       return NextResponse.json(
-        { error: 'Pitch deck file is required' },
+        { error: 'Business pitch information is required.' },
         { status: 400 }
       );
     }
 
-    if (!isFileTypeAllowed(file)) {
-      return NextResponse.json(
-        { error: 'Invalid file type. Only PDF and PowerPoint (.ppt, .pptx) are allowed.' },
-        { status: 400 }
-      );
-    }
-
-    if (file.size > 10 * 1024 * 1024) {
-      return NextResponse.json(
-        { error: 'File size exceeds 10MB limit.' },
-        { status: 400 }
-      );
+    if (file && file instanceof File && file.size > 0) {
+      if (!isFileTypeAllowed(file)) {
+        return NextResponse.json(
+          { error: 'Invalid file type. Only PDF and PowerPoint (.ppt, .pptx) are allowed.' },
+          { status: 400 }
+        );
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        return NextResponse.json(
+          { error: 'File size exceeds 10MB limit.' },
+          { status: 400 }
+        );
+      }
     }
 
     const registrationId = String(formData.get('registrationId') || '').trim();
@@ -127,8 +130,22 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Upload to Cloudinary
-    const { url: pitchDeckUrl, publicId: cloudinaryPublicId } = await uploadToCloudinary(file, registrationId);
+    let pitchDeckUrl: string | null = null;
+    let pitchDeckFileName: string | null = null;
+    let cloudinaryPublicId: string | null = null;
+    let fileSize: number | null = null;
+    let fileType: string | null = null;
+    let fileFormat: string | null = null;
+
+    if (file && file instanceof File && file.size > 0) {
+      const uploaded = await uploadToCloudinary(file, registrationId);
+      pitchDeckUrl = uploaded.url;
+      cloudinaryPublicId = uploaded.publicId;
+      pitchDeckFileName = file.name;
+      fileSize = file.size;
+      fileType = file.type;
+      fileFormat = file.name.split('.').pop() || 'unknown';
+    }
 
     const { db } = await import('@/lib/firebase');
     const { doc, setDoc, serverTimestamp } = await import('firebase/firestore');
@@ -140,20 +157,13 @@ export async function POST(request: NextRequest) {
       fullName,
       email,
       category,
-      businessName: String(formData.get('businessName') || '').trim(),
-      businessDescription: String(formData.get('businessDescription') || '').trim(),
-      problemStatement: String(formData.get('problemStatement') || '').trim(),
-      solution: String(formData.get('solution') || '').trim(),
-      targetMarket: String(formData.get('targetMarket') || '').trim(),
-      revenueModel: String(formData.get('revenueModel') || '').trim(),
-      fundingNeeds: String(formData.get('fundingNeeds') || '').trim(),
-      teamSize: String(formData.get('teamSize') || '').trim(),
+      pitchInfo,
       pitchDeckUrl,
-      pitchDeckFileName: file.name,
+      pitchDeckFileName,
       cloudinaryPublicId,
-      fileSize: file.size,
-      fileType: file.type,
-      fileFormat: file.name.split('.').pop() || 'unknown',
+      fileSize,
+      fileType,
+      fileFormat,
       submissionDate: serverTimestamp(),
       status: 'submitted',
       createdAt: serverTimestamp(),

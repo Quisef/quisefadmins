@@ -1,6 +1,21 @@
 "use client";
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { Loader2, Upload, X } from "lucide-react";
+import dynamic from "next/dynamic";
+
+const BlogEditor = dynamic(
+  () => import("@/app/components/blog/BlogEditor").then((mod) => mod.default),
+  { ssr: false }
+);
+
+function stripHtml(html: string): string {
+  if (!html || typeof html !== "string") return "";
+  return html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function hasMeaningfulContent(html: string): boolean {
+  return stripHtml(html).trim().length > 0;
+}
 import { db } from "@/lib/firebase";
 import { collection, getDocs, Timestamp, query, orderBy } from "firebase/firestore";
 import Image from "next/image";
@@ -258,7 +273,7 @@ const BlogPage = () => {
     setError(null);
 
     try {
-      if (!newBlog.title || !newBlog.content || !newBlog.author || !newBlog.categories) {
+      if (!newBlog.title || !hasMeaningfulContent(newBlog.content) || !newBlog.author || !newBlog.categories) {
         throw new Error("Please fill in all required fields");
       }
 
@@ -447,16 +462,13 @@ const BlogPage = () => {
                     <label htmlFor="content" className="block text-sm font-medium text-gray-700 mb-1">
                       Content
                     </label>
-                    <textarea
-                      id="content"
-                      name="content"
-                      placeholder="Write your blog content"
+                    <BlogEditor
                       value={newBlog.content}
-                      onChange={(e) =>
-                        setNewBlog((prev) => ({ ...prev, content: e.target.value }))
+                      onChange={(html) =>
+                        setNewBlog((prev) => ({ ...prev, content: html }))
                       }
-                      required
-                      className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-h-[200px]"
+                      placeholder="Write your blog content"
+                      minHeight="250px"
                     />
                   </div>
 
@@ -651,7 +663,7 @@ const BlogPage = () => {
                       )}
                     </td>
                     <td className="px-2 sm:px-4 py-2 sm:py-4 whitespace-nowrap text-sm font-medium text-gray-900">{blog.title}</td>
-                    <td className="px-2 sm:px-4 py-2 sm:py-4 text-sm text-gray-500 line-clamp-2">{blog.content}</td>
+                    <td className="px-2 sm:px-4 py-2 sm:py-4 text-sm text-gray-500 line-clamp-2">{stripHtml(blog.content)}</td>
                     <td className="px-2 sm:px-4 py-2 sm:py-4 whitespace-nowrap text-sm text-gray-500">{blog.author}</td>
                     <td className="px-2 sm:px-4 py-2 sm:py-4 whitespace-nowrap text-sm text-gray-500"></td>
                     <td className="px-2 sm:px-4 py-2 sm:py-4 whitespace-nowrap text-sm text-gray-500">
