@@ -4,7 +4,7 @@ import { Loader2, Upload, X } from "lucide-react";
 import dynamic from "next/dynamic";
 
 const BlogEditor = dynamic(
-  () => import("@/app/components/blog/BlogEditor").then((mod) => mod.default),
+  () => import("@/components/blog/BlogEditor").then((mod) => mod.default),
   { ssr: false }
 );
 
