@@ -548,7 +548,7 @@ export default function FuturenTrepeneurship() {
 
           <div className="mb-10 xs:mb-12 sm:mb-16 px-4">
             <p className="text-lg xs:text-xl sm:text-2xl md:text-3xl font-bold text-amber-300 mb-3 xs:mb-4 sm:mb-6 animate-bounce-slow">
-              Limited Slots – Register Before March 9, 2026!
+              Limited Slots – Register Before March 15, 2026!
             </p>
             <a
               href="#categories"
@@ -565,7 +565,7 @@ export default function FuturenTrepeneurship() {
                 Registration Closes In
               </h2>
             </div>
-            <CountdownTimer targetDate="2026-03-09T23:59:59" />
+            <CountdownTimer targetDate="2026-03-15T23:59:59" />
           </div>
         </div>
       </div>
@@ -611,7 +611,7 @@ export default function FuturenTrepeneurship() {
               </h3>
             </div>
             <p className="text-sm xs:text-base sm:text-lg text-gray-800 mb-1 xs:mb-1.5 sm:mb-2 font-semibold">
-              Feb 10 – March 9, 2026
+              Feb 10 – March 15, 2026
             </p>
             <p className="text-xs xs:text-sm sm:text-base text-gray-700">
               400 total slots • Cohort 1

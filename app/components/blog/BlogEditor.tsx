@@ -2,21 +2,21 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
+// @ts-ignore
 import draftToHtml from "draftjs-to-html";
+// @ts-ignore
 import htmlToDraft from "html-to-draftjs";
 import {
   EditorState,
   ContentState,
   convertToRaw,
   RichUtils,
-  DraftBlockType,
+  Editor,
 } from "draft-js";
-import type { EditorProps } from "draft-js";
-
-const Editor = dynamic<EditorProps>(
-  () => import("draft-js").then((mod) => mod.Editor),
-  { ssr: false }
-);
+// TODO: Install proper TypeScript types for 'draft-js' if available:
+// Run: npm i --save-dev @types/draft-js
+// Or add the following to a global .d.ts file to suppress TS error if types do not exist:
+// declare module 'draft-js';
 
 type BlockType =
   | "header-one"
@@ -103,7 +103,7 @@ export default function BlogEditor({
     handleChange(RichUtils.toggleInlineStyle(editorState, style));
   };
 
-  const toggleBlockType = (blockType: DraftBlockType) => {
+  const toggleBlockType = (blockType: string) => {
     handleChange(RichUtils.toggleBlockType(editorState, blockType));
   };
 
