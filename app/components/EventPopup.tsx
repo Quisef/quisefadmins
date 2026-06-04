@@ -13,7 +13,7 @@ export default function EventPopup() {
   useEffect(() => {
     const hasSeen = sessionStorage.getItem('event-popup-seen');
     if (!hasSeen) {
-      const timer = setTimeout(() => setIsOpen(true), 5000);
+      const timer = setTimeout(() => setIsOpen(false), 5000);
       return () => clearTimeout(timer);
     }
   }, []);
