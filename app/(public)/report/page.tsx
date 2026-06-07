@@ -218,7 +218,7 @@ export default function ReportPage() {
               Through Sexuality Education
             </h1>
             <p className="text-slate-500 text-lg max-w-2xl leading-relaxed">
-              A four-year impact assessment of adolescent-focused GBV prevention
+              A Three-year impact assessment of adolescent-focused GBV prevention
               across Adamawa State, Northeast Nigeria.
             </p>
           </div>
@@ -266,13 +266,13 @@ export default function ReportPage() {
               Executive Summary
             </h2>
             <h3 className="text-2xl font-bold text-slate-900 leading-snug">
-              Four Years at the Intersection of Safety & Education
+              Three Years at the Intersection of Safety & Education
             </h3>
             <div className="h-1 w-12 bg-blue-500 rounded-full" />
           </div>
           <div className="md:col-span-3 space-y-4 text-slate-600 leading-relaxed text-[15px]">
             <p>
-              Over four years, the Quiet Shelter Empowerment Foundation has built a
+              Over Three years, the Quiet Shelter Empowerment Foundation has built a
               robust, localised model for delivering comprehensive sexuality education
               (CSE) and GBV prevention strategies in conflict-affected Northeast Nigeria.
             </p>

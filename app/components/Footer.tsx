@@ -140,6 +140,7 @@ const Footer: React.FC = () => {
               {[
                 { href: '/members', label: 'Membership' },
                 { href: '/projects', label: 'Project' },
+                { href: '/reports', label: 'Project Reports' },
                 { href: '/annualreport', label: 'Annual Report' },
                 { href: 'https://learn.quietshelter.org', label: 'Learn' },
                 { href: 'https://www.quietshelter.org/login', label: 'Admin Portal', external: true },
