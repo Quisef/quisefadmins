@@ -52,7 +52,7 @@ export default function ShelterPage() {
       {/* Navigation Buttons (Top) */}
       <div className="max-w-6xl mx-auto py-4 px-4 sm:px-6 flex justify-between">
         <Link
-          href="/strategy/wash"
+          href="/youth-empowerment"
           className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-all duration-300"
         >
           Previous
@@ -180,7 +180,7 @@ export default function ShelterPage() {
       {/* Navigation Buttons (Bottom) */}
       <div className="max-w-6xl mx-auto py-8 px-4 sm:px-6 flex justify-between">
         <Link
-          href="/strategy/wash"
+          href="/youth-empowerment"
           className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-all duration-300"
         >
           Previous

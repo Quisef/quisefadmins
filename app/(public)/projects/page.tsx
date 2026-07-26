@@ -2,6 +2,7 @@
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { Metadata } from 'next';
 import { db } from '@/lib/firebase';
 import { collection, getDocs } from 'firebase/firestore';
@@ -114,6 +115,45 @@ export default function ProjectPage() {
           Our Projects
         </h1>
 
+        {!selectedProject && (
+          <section
+            className="mb-12 overflow-hidden rounded-2xl bg-emerald-950 text-white shadow-xl"
+            aria-labelledby="featured-youth-empowerment"
+          >
+            <div className="grid md:grid-cols-2">
+              <div className="relative min-h-72">
+                <Image
+                  src="/images/official-unveiling.jpg"
+                  alt="The Future Entrepreneurship Initiative being unveiled to NYSC corps members"
+                  fill
+                  priority
+                  sizes="(min-width: 768px) 50vw, 100vw"
+                  className="object-cover"
+                />
+              </div>
+              <div className="flex flex-col justify-center p-7 sm:p-10">
+                <p className="text-sm font-bold uppercase tracking-[0.18em] text-emerald-300">
+                  Featured project
+                </p>
+                <h2 id="featured-youth-empowerment" className="mt-3 text-3xl font-bold">
+                  Youth Empowerment
+                </h2>
+                <p className="mt-5 text-lg leading-8 text-emerald-50">
+                  Through the Future Entrepreneurship Initiative, QuiSEF gives young Nigerians practical
+                  business training, mentorship, access to seed support, and a network designed for long-term
+                  growth.
+                </p>
+                <Link
+                  href="/youth-empowerment"
+                  className="mt-7 inline-flex w-fit rounded-md bg-emerald-400 px-5 py-3 font-semibold text-emerald-950 transition hover:bg-emerald-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300"
+                >
+                  Explore Youth Empowerment
+                </Link>
+              </div>
+            </div>
+          </section>
+        )}
+
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6 text-center">
             {error}
@@ -123,7 +163,7 @@ export default function ProjectPage() {
         {loading ? (
           <div className="text-center py-8 text-gray-600">Loading projects...</div>
         ) : projects.length === 0 ? (
-          <div className="text-center py-8 text-gray-600">No projects available at this time.</div>
+          <div className="text-center py-8 text-gray-600">No additional projects available at this time.</div>
         ) : (
           <>
             {!selectedProject ? (

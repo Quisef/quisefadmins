@@ -185,11 +185,11 @@ export default function StrategyPage() {
                 href: '/strategy/sgbv',
               },
               {
-                image: '/images/waterboy.jpg',
-                title: 'Water, Sanitation, and Hygiene (WASH)',
+                image: '/images/official-unveiling.jpg',
+                title: 'Youth Empowerment',
                 description:
-                  'Improving WASH infrastructure and practices can prevent waterborne diseases, reduce mortality rates, and enhance overall quality of life.',
-                href: '/strategy/wash',
+                  'Equipping young Nigerians with entrepreneurship training, mentorship, seed support, and a lifelong network to build sustainable businesses.',
+                href: '/youth-empowerment',
               },
               {
                 image: '/images/hone.jpeg',
