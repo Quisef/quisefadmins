@@ -323,7 +323,7 @@ export default function AboutPage() {
       bio: 'Jean Paul contributes global expertise in humanitarian efforts.',
     },
     {
-      name: 'Mrs Wadiam Goodness',
+      name: 'Mrs Wadiam Ndari',
       role: 'Executive Director',
       image: '/images/Chama.jpg',
       bio: 'Wadiam oversees operations with a passion for uptake the vulnerable.',
